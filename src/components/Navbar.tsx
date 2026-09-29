@@ -1,22 +1,32 @@
 'use client';
 
-import React from 'react';
-import { Cloud, Shield, Server, Settings, Globe, ArrowUpRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { Cloud, User, LogOut, ArrowRight } from 'lucide-react';
+import { getCurrentUser, logoutUser, User as AuthUser } from '@/lib/auth';
 
-interface NavbarProps {
-  onOpenSettings: () => void;
-  onNavigate: (sectionId: string) => void;
-  activeSection: string;
-  hasCfToken: boolean;
-}
+export default function Navbar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [currentUser, setLocalUser] = useState<AuthUser | null>(null);
 
-export default function Navbar({ onOpenSettings, onNavigate, activeSection, hasCfToken }: NavbarProps) {
+  useEffect(() => {
+    setLocalUser(getCurrentUser());
+  }, [pathname]);
+
+  const handleLogout = () => {
+    logoutUser();
+    setLocalUser(null);
+    router.push('/login');
+  };
+
   return (
     <header style={{
       position: 'sticky',
       top: 0,
-      zIndex: 40,
-      backgroundColor: 'rgba(9, 9, 11, 0.88)',
+      zIndex: 50,
+      backgroundColor: 'rgba(9, 9, 11, 0.92)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--border-subtle)',
       transition: 'all 0.2s ease',
@@ -28,9 +38,9 @@ export default function Navbar({ onOpenSettings, onNavigate, activeSection, hasC
         height: '68px',
       }}>
         {/* Brand / Logo */}
-        <div 
-          onClick={() => onNavigate('search')}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+        <Link 
+          href="/"
+          style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
         >
           <div style={{
             width: '36px',
@@ -51,119 +61,147 @@ export default function Navbar({ onOpenSettings, onNavigate, activeSection, hasC
                 XIAS<span style={{ color: 'var(--cf-orange)' }}>.DNS</span>
               </span>
               <span className="badge badge-cf" style={{ fontSize: '11px', padding: '2px 7px' }}>
-                Edge DNS
+                Subdomain
               </span>
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.01em' }}>
               xias.tr &bull; xias.info
             </div>
           </div>
-        </div>
+        </Link>
 
-        {/* Center Navigation */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <button
-            onClick={() => onNavigate('search')}
+        {/* Center Navigation Links */}
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            href="/"
             style={{
               padding: '8px 14px',
               fontSize: '13px',
               fontWeight: 500,
-              color: activeSection === 'search' ? '#ffffff' : 'var(--text-secondary)',
-              backgroundColor: activeSection === 'search' ? 'var(--bg-surface-elevated)' : 'transparent',
+              color: pathname === '/' ? '#ffffff' : 'var(--text-secondary)',
+              backgroundColor: pathname === '/' ? 'var(--bg-surface-elevated)' : 'transparent',
               borderRadius: 'var(--radius-md)',
-              border: activeSection === 'search' ? '1px solid var(--border-medium)' : '1px solid transparent',
+              border: pathname === '/' ? '1px solid var(--border-medium)' : '1px solid transparent',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            Ana Sayfa
+          </Link>
+
+          <Link
+            href="/subdomain-al"
+            style={{
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: pathname === '/subdomain-al' ? '#ffffff' : 'var(--cf-orange)',
+              backgroundColor: pathname === '/subdomain-al' ? 'var(--cf-orange-subtle)' : 'transparent',
+              borderRadius: 'var(--radius-md)',
+              border: pathname === '/subdomain-al' ? '1px solid var(--cf-orange-border)' : '1px solid transparent',
               transition: 'all 0.15s ease',
             }}
           >
             Subdomain Al
-          </button>
+          </Link>
 
-          <button
-            onClick={() => onNavigate('dashboard')}
+          <Link
+            href="/dashboard"
             style={{
               padding: '8px 14px',
               fontSize: '13px',
               fontWeight: 500,
-              color: activeSection === 'dashboard' ? '#ffffff' : 'var(--text-secondary)',
-              backgroundColor: activeSection === 'dashboard' ? 'var(--bg-surface-elevated)' : 'transparent',
+              color: pathname === '/dashboard' ? '#ffffff' : 'var(--text-secondary)',
+              backgroundColor: pathname === '/dashboard' ? 'var(--bg-surface-elevated)' : 'transparent',
               borderRadius: 'var(--radius-md)',
-              border: activeSection === 'dashboard' ? '1px solid var(--border-medium)' : '1px solid transparent',
+              border: pathname === '/dashboard' ? '1px solid var(--border-medium)' : '1px solid transparent',
               transition: 'all 0.15s ease',
             }}
           >
-            DNS Paneli
-          </button>
-
-          <button
-            onClick={() => onNavigate('guides')}
-            style={{
-              padding: '8px 14px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: activeSection === 'guides' ? '#ffffff' : 'var(--text-secondary)',
-              backgroundColor: activeSection === 'guides' ? 'var(--bg-surface-elevated)' : 'transparent',
-              borderRadius: 'var(--radius-md)',
-              border: activeSection === 'guides' ? '1px solid var(--border-medium)' : '1px solid transparent',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Entegrasyon Kılavuzları
-          </button>
+            Dashboard
+          </Link>
         </nav>
 
-        {/* Right Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Edge status badge */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '5px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            fontSize: '12px',
-            color: 'var(--text-secondary)',
-          }}>
-            <span style={{
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--emerald)',
-              display: 'inline-block',
-            }} className="pulse-indicator" />
-            <span>330+ Edge Aktif</span>
-          </div>
+        {/* Right Auth Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Link
+                href="/dashboard"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                }}
+              >
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'var(--cf-orange)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                }}>
+                  {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                <span>{currentUser.name}</span>
+              </Link>
 
-          {/* Cloudflare Settings Trigger */}
-          <button
-            onClick={onOpenSettings}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-              padding: '7px 12px',
-              borderRadius: 'var(--radius-md)',
-              background: hasCfToken ? 'var(--cf-orange-subtle)' : 'var(--bg-surface-elevated)',
-              border: hasCfToken ? '1px solid var(--cf-orange-border)' : '1px solid var(--border-medium)',
-              color: hasCfToken ? 'var(--cf-orange)' : 'var(--text-secondary)',
-              fontSize: '12px',
-              fontWeight: 500,
-              transition: 'all 0.15s ease',
-            }}
-            title="Cloudflare API Yapılandırması"
-          >
-            <Settings size={14} />
-            <span>Cloudflare API</span>
-            {hasCfToken && (
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--cf-orange)',
-              }} />
-            )}
-          </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 10px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                  fontSize: '12px',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Çıkış Yap"
+              >
+                <LogOut size={14} />
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link
+                href="/login"
+                style={{
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  borderRadius: 'var(--radius-md)',
+                  transition: 'color 0.15s ease',
+                }}
+              >
+                Giriş Yap
+              </Link>
+
+              <Link
+                href="/register"
+                className="btn-primary"
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                <span>Kayıt Ol</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

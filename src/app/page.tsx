@@ -1,303 +1,159 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Navbar from '@/components/Navbar';
 import HeroSection from '@/components/HeroSection';
-import SubdomainSearch from '@/components/SubdomainSearch';
-import Dashboard from '@/components/Dashboard';
-import SetupGuides from '@/components/SetupGuides';
-import ClaimModal from '@/components/ClaimModal';
-import CloudflareSettingsModal from '@/components/CloudflareSettingsModal';
 import Footer from '@/components/Footer';
-import {
-  ClaimedSubdomain,
-  CloudflareConfig,
-  DnsRecord,
-  DomainZone,
-  UrlRedirect,
-} from '@/lib/types';
-import {
-  getStoredSubdomains,
-  saveStoredSubdomains,
-  getStoredCloudflareConfig,
-  saveStoredCloudflareConfig,
-} from '@/lib/storage';
-import { CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { Globe, ArrowRight, Server, ShieldCheck, Zap, Layers } from 'lucide-react';
 
 export default function Home() {
-  const [subdomains, setSubdomains] = useState<ClaimedSubdomain[]>([]);
-  const [selectedSubdomain, setSelectedSubdomain] = useState<ClaimedSubdomain | null>(null);
-  const [cfConfig, setCfConfig] = useState<CloudflareConfig>({
-    apiToken: '',
-    zoneIdXiasTr: '',
-    zoneIdXiasInfo: '',
-    autoProxyNewRecords: true,
-  });
-
-  const [activeSection, setActiveSection] = useState('search');
-  const [claimTarget, setClaimTarget] = useState<{ subdomain: string; zone: DomainZone } | null>(null);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Load initial data
-  useEffect(() => {
-    const loadedSubs = getStoredSubdomains();
-    setSubdomains(loadedSubs);
-    if (loadedSubs.length > 0) {
-      setSelectedSubdomain(loadedSubs[0]);
-    }
-    const loadedConfig = getStoredCloudflareConfig();
-    setCfConfig(loadedConfig);
-  }, []);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3200);
-  };
-
-  // Subdomain claiming
-  const handleOpenClaimModal = (subdomain: string, zone: DomainZone) => {
-    setClaimTarget({ subdomain, zone });
-  };
-
-  const handleClaimSuccess = (newSub: ClaimedSubdomain) => {
-    const updated = [newSub, ...subdomains];
-    setSubdomains(updated);
-    setSelectedSubdomain(newSub);
-    saveStoredSubdomains(updated);
-    setClaimTarget(null);
-    showToast(`"${newSub.fullDomain}" başarıyla kaydedildi ve DNS kaydı aktif edildi!`);
-
-    // Smooth scroll to dashboard
-    handleNavigate('dashboard');
-  };
-
-  // DNS Record Handlers
-  const handleAddDnsRecord = (newRecData: Omit<DnsRecord, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!selectedSubdomain) return;
-
-    const now = new Date().toISOString();
-    const newRecord: DnsRecord = {
-      ...newRecData,
-      id: `rec-${Date.now()}`,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const updatedSubdomains = subdomains.map((s) => {
-      if (s.id === selectedSubdomain.id) {
-        return {
-          ...s,
-          dnsRecords: [...s.dnsRecords, newRecord],
-        };
-      }
-      return s;
-    });
-
-    setSubdomains(updatedSubdomains);
-    saveStoredSubdomains(updatedSubdomains);
-
-    const updatedCurrent = updatedSubdomains.find((s) => s.id === selectedSubdomain.id) || null;
-    setSelectedSubdomain(updatedCurrent);
-    showToast('Yeni DNS kaydı başarıyla eklendi.');
-  };
-
-  const handleDeleteDnsRecord = (recordId: string) => {
-    if (!selectedSubdomain) return;
-
-    const updatedSubdomains = subdomains.map((s) => {
-      if (s.id === selectedSubdomain.id) {
-        return {
-          ...s,
-          dnsRecords: s.dnsRecords.filter((r) => r.id !== recordId),
-        };
-      }
-      return s;
-    });
-
-    setSubdomains(updatedSubdomains);
-    saveStoredSubdomains(updatedSubdomains);
-
-    const updatedCurrent = updatedSubdomains.find((s) => s.id === selectedSubdomain.id) || null;
-    setSelectedSubdomain(updatedCurrent);
-    showToast('DNS kaydı silindi.');
-  };
-
-  const handleToggleProxy = (recordId: string) => {
-    if (!selectedSubdomain) return;
-
-    const updatedSubdomains = subdomains.map((s) => {
-      if (s.id === selectedSubdomain.id) {
-        return {
-          ...s,
-          dnsRecords: s.dnsRecords.map((r) => {
-            if (r.id === recordId) {
-              return { ...r, proxied: !r.proxied, updatedAt: new Date().toISOString() };
-            }
-            return r;
-          }),
-        };
-      }
-      return s;
-    });
-
-    setSubdomains(updatedSubdomains);
-    saveStoredSubdomains(updatedSubdomains);
-
-    const updatedCurrent = updatedSubdomains.find((s) => s.id === selectedSubdomain.id) || null;
-    setSelectedSubdomain(updatedCurrent);
-    showToast('Cloudflare Proxy durumu güncellendi.');
-  };
-
-  // URL Redirect Update
-  const handleUpdateRedirect = (redirect: UrlRedirect | undefined) => {
-    if (!selectedSubdomain) return;
-
-    const updatedSubdomains = subdomains.map((s) => {
-      if (s.id === selectedSubdomain.id) {
-        return {
-          ...s,
-          redirect: redirect,
-        };
-      }
-      return s;
-    });
-
-    setSubdomains(updatedSubdomains);
-    saveStoredSubdomains(updatedSubdomains);
-
-    const updatedCurrent = updatedSubdomains.find((s) => s.id === selectedSubdomain.id) || null;
-    setSelectedSubdomain(updatedCurrent);
-    showToast(redirect ? 'URL Yönlendirme kuralı aktif edildi.' : 'URL Yönlendirme kuralı kaldırıldı.');
-  };
-
-  // Subdomain Deletion
-  const handleDeleteSubdomain = (subdomainId: string) => {
-    const updated = subdomains.filter((s) => s.id !== subdomainId);
-    setSubdomains(updated);
-    saveStoredSubdomains(updated);
-    setSelectedSubdomain(updated.length > 0 ? updated[0] : null);
-    showToast('Subdomain ve ilişkili tüm kayıtlar silindi.');
-  };
-
-  // Navigation
-  const handleNavigate = (sectionId: string) => {
-    setActiveSection(sectionId);
-    if (sectionId === 'search') {
-      const el = document.getElementById('search-section');
-      el?.scrollIntoView({ behavior: 'smooth' });
-    } else if (sectionId === 'dashboard') {
-      const el = document.getElementById('dashboard-section');
-      el?.scrollIntoView({ behavior: 'smooth' });
-    } else if (sectionId === 'guides') {
-      const el = document.getElementById('guides-section');
-      el?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  // Save Cloudflare Settings
-  const handleSaveCfConfig = (newConfig: CloudflareConfig) => {
-    setCfConfig(newConfig);
-    saveStoredCloudflareConfig(newConfig);
-    showToast('Cloudflare API yapılandırması başarıyla kaydedildi.');
-  };
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          className="animate-slide-down"
-          style={{
-            position: 'fixed',
-            top: '80px',
-            right: '24px',
-            zIndex: 110,
-            background: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--cf-orange-border)',
-            boxShadow: 'var(--shadow-modal)',
-            padding: '12px 18px',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '13px',
-            color: '#ffffff',
-          }}
-        >
-          <CheckCircle2 size={16} style={{ color: 'var(--cf-orange)' }} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Navbar */}
-      <Navbar
-        onOpenSettings={() => setShowSettingsModal(true)}
-        onNavigate={handleNavigate}
-        activeSection={activeSection}
-        hasCfToken={Boolean(cfConfig.apiToken)}
-      />
+      <Navbar />
 
       <main style={{ flex: 1 }}>
-        {/* Hero Section */}
-        <HeroSection
-          onScrollToSearch={() => handleNavigate('search')}
-          onScrollToDashboard={() => handleNavigate('dashboard')}
-        />
+        {/* Clean Hero Section without deleted items */}
+        <HeroSection />
 
-        {/* Subdomain Search & Claim Section */}
-        <SubdomainSearch
-          claimedSubdomains={subdomains}
-          onClaimSubdomain={handleOpenClaimModal}
-        />
+        {/* 3 Step How It Works Section */}
+        <section style={{ padding: '48px 0 80px 0', borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="container" style={{ maxWidth: '960px' }}>
+            
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--cf-orange)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Basit & Hızlı Kurulum
+              </span>
+              <h2 style={{ fontSize: '32px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em', marginTop: '6px' }}>
+                3 Adımda Projenizi Yayına Alın
+              </h2>
+            </div>
 
-        {/* Dashboard Section */}
-        <Dashboard
-          subdomains={subdomains}
-          onSelectSubdomain={setSelectedSubdomain}
-          selectedSubdomain={selectedSubdomain}
-          onAddDnsRecord={handleAddDnsRecord}
-          onDeleteDnsRecord={handleDeleteDnsRecord}
-          onToggleProxy={handleToggleProxy}
-          onUpdateRedirect={handleUpdateRedirect}
-          onDeleteSubdomain={handleDeleteSubdomain}
-          onNavigateToSearch={() => handleNavigate('search')}
-        />
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '20px',
+            }}>
+              {/* Step 1 */}
+              <div className="card" style={{ padding: '24px', background: 'var(--bg-surface)' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--cf-orange-subtle)',
+                  border: '1px solid var(--cf-orange-border)',
+                  color: 'var(--cf-orange)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  marginBottom: '16px',
+                }}>
+                  1
+                </div>
+                <h3 style={{ fontSize: '17px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+                  Subdomain Seçin
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  <code>.xias.tr</code> veya <code>.xias.info</code> kök domainlerinden projenize uygun alt alan adını anında sorgulayın.
+                </p>
+              </div>
 
-        {/* Standalone Entegrasyon Kılavuzları Bölümü */}
-        <section id="guides-section" style={{ padding: '48px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-          <div className="container" style={{ maxWidth: '900px' }}>
-            <SetupGuides activeDomain={selectedSubdomain ? selectedSubdomain.fullDomain : 'projeniz.xias.tr'} />
+              {/* Step 2 */}
+              <div className="card" style={{ padding: '24px', background: 'var(--bg-surface)' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--blue-subtle)',
+                  border: '1px solid var(--blue-border)',
+                  color: 'var(--blue)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  marginBottom: '16px',
+                }}>
+                  2
+                </div>
+                <h3 style={{ fontSize: '17px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+                  DNS veya IP Girin
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  A, AAAA, CNAME gibi 6 adede kadar DNS kaydı tanımlayın veya doğrudan 301/302 URL yönlendirmesi yapın.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="card" style={{ padding: '24px', background: 'var(--bg-surface)' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--emerald-subtle)',
+                  border: '1px solid var(--emerald-border)',
+                  color: 'var(--emerald)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  marginBottom: '16px',
+                }}>
+                  3
+                </div>
+                <h3 style={{ fontSize: '17px', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
+                  Anında Yayında
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  Cloudflare Anycast ağıyla otomatik SSL/TLS sertifikası ve DDoS koruması saniyeler içinde devreye girsin.
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom CTA Box */}
+            <div
+              className="card"
+              style={{
+                marginTop: '48px',
+                padding: '36px 32px',
+                background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-surface-elevated) 100%)',
+                border: '1px solid var(--border-medium)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '20px',
+              }}
+            >
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>
+                  Hemen Ücretsiz Alan Adınızı Oluşturun
+                </h3>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                  Kredi kartı veya karmaşık onay süreçleri gerekmez.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Link href="/subdomain-al" className="btn-primary" style={{ padding: '11px 22px' }}>
+                  <Globe size={16} />
+                  <span>Subdomain Al</span>
+                  <ArrowRight size={15} />
+                </Link>
+                <Link href="/login" className="btn-secondary" style={{ padding: '11px 20px' }}>
+                  <span>Giriş Yap</span>
+                </Link>
+              </div>
+            </div>
+
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <Footer
-        onNavigate={handleNavigate}
-        onOpenSettings={() => setShowSettingsModal(true)}
-      />
-
-      {/* Claim Modal */}
-      {claimTarget && (
-        <ClaimModal
-          subdomain={claimTarget.subdomain}
-          domainZone={claimTarget.zone}
-          onClose={() => setClaimTarget(null)}
-          onSuccess={handleClaimSuccess}
-        />
-      )}
-
-      {/* Cloudflare Settings Modal */}
-      {showSettingsModal && (
-        <CloudflareSettingsModal
-          config={cfConfig}
-          onSave={handleSaveCfConfig}
-          onClose={() => setShowSettingsModal(false)}
-        />
-      )}
-
+      <Footer onNavigate={() => {}} onOpenSettings={() => {}} />
     </div>
   );
 }
