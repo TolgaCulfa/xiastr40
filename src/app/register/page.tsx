@@ -1,33 +1,85 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Cloud, Lock, Mail, User, ArrowRight, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
-import { registerUser } from '@/lib/auth';
+import {
+  Lock,
+  Mail,
+  User,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+  Fingerprint,
+} from 'lucide-react';
+import { registerUser, getCurrentUser } from '@/lib/auth';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const existing = getCurrentUser();
+    if (existing) {
+      router.push('/dashboard');
+    }
+  }, [router]);
+
+  // Calculate password strength
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, text: 'Girilmedi', color: '#333333' };
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 10) score += 1;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    if (score <= 1) return { score: 1, text: 'Zayıf', color: '#555555' };
+    if (score <= 3) return { score: 2, text: 'Orta', color: '#888888' };
+    if (score <= 4) return { score: 3, text: 'Güçlü', color: '#cccccc' };
+    return { score: 4, text: 'Kurumsal Seviye (256-Bit)', color: '#ffffff' };
+  };
+
+  const strength = getPasswordStrength(password);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Girdiğiniz şifreler birbiriyle eşleşmiyor.');
+      return;
+    }
+
+    if (!termsAccepted) {
+      setError('Devam etmek için hizmet koşullarını kabul etmelisiniz.');
+      return;
+    }
+
     setIsLoading(true);
 
-    const result = registerUser(name, email, password);
-    if (result.success) {
-      setTimeout(() => {
+    try {
+      const result = await registerUser(name, email, password);
+      if (result.success) {
         router.push('/dashboard');
-      }, 400);
-    } else {
+      } else {
+        setError(result.error || 'Kayıt işlemi gerçekleştirilemedi.');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Sunucu ile bağlantı kurulamadı.');
+    } finally {
       setIsLoading(false);
-      setError(result.error || 'Kayıt işlemi tamamlanamadı.');
     }
   };
 
@@ -38,27 +90,35 @@ export default function RegisterPage() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(243, 128, 32, 0.08), transparent), var(--bg-main)',
+      backgroundColor: '#000000',
+      color: '#ffffff',
       padding: '24px 16px',
     }}>
       {/* Brand Header */}
-      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px' }}>
+      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '28px', textDecoration: 'none' }}>
         <div style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: 'var(--radius-md)',
-          background: 'linear-gradient(135deg, #18181f 0%, #22222a 100%)',
-          border: '1px solid var(--cf-orange-border)',
+          width: '36px',
+          height: '36px',
+          borderRadius: 'var(--radius-sm)',
+          background: '#ffffff',
+          color: '#000000',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--cf-orange)',
+          fontWeight: 900,
+          fontSize: '16px',
+          letterSpacing: '-0.05em',
         }}>
-          <Cloud size={22} strokeWidth={2.2} />
+          X
         </div>
-        <span style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>
-          XIAS<span style={{ color: 'var(--cf-orange)' }}>.DNS</span>
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+            XIAS.DNS
+          </span>
+          <span style={{ fontSize: '10px', color: '#666666', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Cloud Subdomain Gateway
+          </span>
+        </div>
       </Link>
 
       {/* Main Register Card */}
@@ -66,43 +126,62 @@ export default function RegisterPage() {
         className="card animate-slide-down"
         style={{
           width: '100%',
-          maxWidth: '420px',
+          maxWidth: '440px',
           padding: '32px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-medium)',
-          boxShadow: 'var(--shadow-modal)',
+          background: '#0a0a0a',
+          border: '1px solid #1a1a1a',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            background: '#111111',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid #222222',
+            fontSize: '11px',
+            color: '#a3a3a3',
+            marginBottom: '12px',
+          }}>
+            <Fingerprint size={12} style={{ color: '#ffffff' }} />
+            <span>Ücretsiz & Limitsiz DNS Hesabı</span>
+          </div>
+
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
-            Yeni Hesap Oluşturun
+            Yeni Hesap Oluştur
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            xias.tr ve xias.info üzerinde ücretsiz subdomainlerinizi yönetin
+          <p style={{ fontSize: '13px', color: '#777777', marginTop: '4px' }}>
+            xias.tr ve xias.info uzantılarını ücretsiz kaydedin
           </p>
         </div>
 
-        {/* Tab switch between Login and Register */}
+        {/* Tab switch */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          background: 'var(--bg-input)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-subtle)',
+          background: '#000000',
+          padding: '3px',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid #1c1c1c',
           marginBottom: '20px',
         }}>
           <Link
             href="/login"
             style={{
-              padding: '7px',
+              padding: '8px',
               textAlign: 'center',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 500,
-              color: 'var(--text-muted)',
+              color: '#777777',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              textDecoration: 'none',
+              transition: 'color 0.15s ease',
             }}
           >
             Giriş Yap
@@ -110,45 +189,42 @@ export default function RegisterPage() {
           <button
             type="button"
             style={{
-              padding: '7px',
+              padding: '8px',
               borderRadius: 'var(--radius-sm)',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 600,
-              background: 'var(--bg-surface-elevated)',
-              color: '#ffffff',
-              border: '1px solid var(--border-medium)',
+              background: '#ffffff',
+              color: '#000000',
+              cursor: 'default',
             }}
           >
             Kayıt Ol
           </button>
         </div>
 
-        {/* Error message */}
         {error && (
-          <div
-            className="animate-fade-in"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--rose-subtle)',
-              border: '1px solid var(--rose-border)',
-              color: 'var(--rose)',
-              fontSize: '12px',
-              marginBottom: '16px',
-            }}
-          >
-            <AlertCircle size={15} />
-            <span>{error}</span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: '#141414',
+            border: '1px solid #333333',
+            color: '#ffffff',
+            fontSize: '12px',
+            lineHeight: '1.4',
+            marginBottom: '16px',
+          }}>
+            <AlertCircle size={16} style={{ color: '#ffffff', flexShrink: 0, marginTop: '2px' }} />
+            <div>{error}</div>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          {/* Name */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+          {/* Name Field */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Ad Soyad
             </label>
             <div style={{ position: 'relative' }}>
@@ -158,23 +234,25 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Tolga Culfa"
+                disabled={isLoading}
                 style={{
                   width: '100%',
-                  padding: '10px 14px 10px 38px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px 10px 36px',
+                  background: '#000000',
+                  border: '1px solid #262626',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
+                  outline: 'none',
                 }}
               />
-              <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <User size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666666' }} />
             </div>
           </div>
 
-          {/* Email */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+          {/* Email Field */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               E-posta Adresi
             </label>
             <div style={{ position: 'relative' }}>
@@ -183,26 +261,35 @@ export default function RegisterPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tolga@ornek.com"
+                placeholder="isim@sirket.com"
+                disabled={isLoading}
                 style={{
                   width: '100%',
-                  padding: '10px 14px 10px 38px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 12px 10px 36px',
+                  background: '#000000',
+                  border: '1px solid #262626',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
+                  outline: 'none',
                 }}
               />
-              <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Mail size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666666' }} />
             </div>
           </div>
 
-          {/* Password */}
-          <div style={{ marginBottom: '22px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Şifre (En az 6 karakter)
-            </label>
+          {/* Password Field */}
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: '#a3a3a3', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Şifre Belirleyin
+              </label>
+              {password && (
+                <span style={{ fontSize: '11px', fontWeight: 600, color: strength.color }}>
+                  {strength.text}
+                </span>
+              )}
+            </div>
 
             <div style={{ position: 'relative' }}>
               <input
@@ -210,18 +297,20 @@ export default function RegisterPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="En az 6 karakter"
+                disabled={isLoading}
                 style={{
                   width: '100%',
-                  padding: '10px 38px 10px 38px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '10px 36px 10px 36px',
+                  background: '#000000',
+                  border: '1px solid #262626',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
+                  outline: 'none',
                 }}
               />
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666666' }} />
               
               <button
                 type="button"
@@ -231,12 +320,83 @@ export default function RegisterPage() {
                   right: '12px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)',
+                  color: '#666666',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px',
                 }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+
+            {/* Strength bar indicator */}
+            {password && (
+              <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                {[1, 2, 3, 4].map((step) => (
+                  <div
+                    key={step}
+                    style={{
+                      flex: 1,
+                      height: '3px',
+                      background: strength.score >= step ? strength.color : '#1a1a1a',
+                      borderRadius: '1px',
+                      transition: 'background 0.2s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password Field */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Şifre Tekrarı
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Şifrenizi tekrar girin"
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px 10px 36px',
+                  background: '#000000',
+                  border: '1px solid #262626',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+              <Lock size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666666' }} />
+            </div>
+          </div>
+
+          {/* Terms checkbox */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', color: '#888888', fontSize: '12px' }}>
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                style={{
+                  width: '15px',
+                  height: '15px',
+                  accentColor: '#ffffff',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                }}
+              />
+              <span>
+                Kullanım koşullarını ve XIAS Cloud DNS Hizmet Şartlarını okudum, kabul ediyorum.
+              </span>
+            </label>
           </div>
 
           {/* Submit Button */}
@@ -244,28 +404,40 @@ export default function RegisterPage() {
             type="submit"
             disabled={isLoading}
             className="btn-primary"
-            style={{ width: '100%', padding: '11px', fontSize: '14px' }}
+            style={{
+              width: '100%',
+              padding: '12px',
+              fontSize: '14px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
           >
-            <span>{isLoading ? 'Hesap Oluşturuluyor...' : 'Ücretsiz Kayıt Ol'}</span>
-            <ArrowRight size={16} />
+            <span>{isLoading ? 'Hesap Oluşturuluyor...' : 'Ücretsiz Hesabımı Başlat'}</span>
+            <ArrowRight size={15} />
           </button>
         </form>
 
-        {/* Footer info */}
+        {/* Footer */}
         <div style={{
           marginTop: '24px',
-          paddingTop: '20px',
-          borderTop: '1px solid var(--border-subtle)',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: 'var(--text-muted)',
+          paddingTop: '16px',
+          borderTop: '1px solid #1a1a1a',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px',
+          flexDirection: 'column',
+          gap: '8px',
+          fontSize: '11px',
+          color: '#666666',
         }}>
-          <ShieldCheck size={14} style={{ color: 'var(--emerald)' }} />
-          <span>Kredi kartı gerekmez. Tamamen ücretsiz.</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <ShieldCheck size={14} style={{ color: '#ffffff' }} />
+            <span>Kredi Kartı Gerekmez &bull; %100 Ücretsiz</span>
+          </div>
+          <div style={{ textAlign: 'center', color: '#555555' }}>
+            Zaten bir hesabınız var mı? <Link href="/login" style={{ color: '#ffffff', fontWeight: 600, textDecoration: 'underline' }}>Giriş Yapın</Link>
+          </div>
         </div>
       </div>
     </div>

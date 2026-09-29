@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Copy, Check, Terminal, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 
 interface SetupGuidesProps {
   activeDomain?: string;
@@ -16,7 +16,7 @@ export default function SetupGuides({ activeDomain = 'ornek.xias.tr' }: SetupGui
   const handleCopy = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(id);
-    setTimeout(() => setCopiedCode(null), 1800);
+    setTimeout(() => setCopiedCode(null), 1600);
   };
 
   const nginxSnippet = `server {
@@ -32,23 +32,23 @@ export default function SetupGuides({ activeDomain = 'ornek.xias.tr' }: SetupGui
     }
 }`;
 
-  const tunnelSnippet = `# 1. Cloudflared CLI aracını kurun
+  const tunnelSnippet = `# 1. Cloudflared kurun
 curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
 sudo dpkg -i cloudflared.deb
 
-# 2. Tüneli başlatın (Örnek: localhost:3000 portunu yönlendirir)
+# 2. Tüneli başlatın
 cloudflared tunnel --url http://localhost:3000`;
 
   return (
-    <div id="guides-section" style={{ padding: '24px 0' }}>
+    <div style={{ padding: '20px 0' }}>
       
       {/* Header */}
-      <div style={{ marginBottom: '18px' }}>
-        <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#ffffff' }}>
+      <div style={{ marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
           Entegrasyon & Dağıtım Kılavuzları
         </h4>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          <strong>{activeDomain}</strong> adresini popüler barındırma platformlarına kolayca bağlayın.
+        <p style={{ fontSize: '12px', color: '#888888' }}>
+          <strong>{activeDomain}</strong> adresini popüler platformlara bağlama adımları.
         </p>
       </div>
 
@@ -57,23 +57,22 @@ cloudflared tunnel --url http://localhost:3000`;
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        background: 'var(--bg-input)',
-        padding: '4px',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--border-subtle)',
-        marginBottom: '18px',
+        background: '#000000',
+        padding: '3px',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid #1c1c1c',
+        marginBottom: '16px',
         flexWrap: 'wrap',
       }}>
         <button
           onClick={() => setActiveTab('vercel')}
           style={{
-            padding: '7px 14px',
+            padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
             borderRadius: 'var(--radius-sm)',
-            background: activeTab === 'vercel' ? 'var(--cf-orange)' : 'transparent',
-            color: activeTab === 'vercel' ? '#ffffff' : 'var(--text-secondary)',
-            transition: 'all 0.15s ease',
+            background: activeTab === 'vercel' ? '#ffffff' : 'transparent',
+            color: activeTab === 'vercel' ? '#000000' : '#888888',
           }}
         >
           ▲ Vercel
@@ -82,202 +81,96 @@ cloudflared tunnel --url http://localhost:3000`;
         <button
           onClick={() => setActiveTab('github')}
           style={{
-            padding: '7px 14px',
+            padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
             borderRadius: 'var(--radius-sm)',
-            background: activeTab === 'github' ? 'var(--cf-orange)' : 'transparent',
-            color: activeTab === 'github' ? '#ffffff' : 'var(--text-secondary)',
-            transition: 'all 0.15s ease',
+            background: activeTab === 'github' ? '#ffffff' : 'transparent',
+            color: activeTab === 'github' ? '#000000' : '#888888',
           }}
         >
-          🐙 GitHub Pages
+          GitHub Pages
         </button>
 
         <button
           onClick={() => setActiveTab('vps')}
           style={{
-            padding: '7px 14px',
+            padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
             borderRadius: 'var(--radius-sm)',
-            background: activeTab === 'vps' ? 'var(--cf-orange)' : 'transparent',
-            color: activeTab === 'vps' ? '#ffffff' : 'var(--text-secondary)',
-            transition: 'all 0.15s ease',
+            background: activeTab === 'vps' ? '#ffffff' : 'transparent',
+            color: activeTab === 'vps' ? '#000000' : '#888888',
           }}
         >
-          🖥️ VPS / Nginx
+          VPS / Nginx
         </button>
 
         <button
           onClick={() => setActiveTab('tunnel')}
           style={{
-            padding: '7px 14px',
+            padding: '6px 12px',
             fontSize: '12px',
             fontWeight: 600,
             borderRadius: 'var(--radius-sm)',
-            background: activeTab === 'tunnel' ? 'var(--cf-orange)' : 'transparent',
-            color: activeTab === 'tunnel' ? '#ffffff' : 'var(--text-secondary)',
-            transition: 'all 0.15s ease',
+            background: activeTab === 'tunnel' ? '#ffffff' : 'transparent',
+            color: activeTab === 'tunnel' ? '#000000' : '#888888',
           }}
         >
-          ☁️ Cloudflare Tunnel (Ev / Docker)
+          Cloudflare Tunnel
         </button>
       </div>
 
-      {/* Vercel Guide */}
+      {/* Vercel */}
       {activeTab === 'vercel' && (
-        <div className="card" style={{ padding: '20px', background: 'var(--bg-surface)' }}>
-          <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>
-            Vercel Projenize Bağlama Adımları
-          </h5>
-          <ol style={{ paddingLeft: '20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.8' }}>
-            <li>
-              Vercel Kontrol Panelinize gidin ve projenizi açın.
-            </li>
-            <li>
-              <strong>Settings &rarr; Domains</strong> sekmesine tıklayın.
-            </li>
-            <li>
-              Alan adı kutusuna <strong style={{ color: '#ffffff' }}>{activeDomain}</strong> yazıp <strong>Add</strong> butonuna basın.
-            </li>
-            <li>
-              DNS Yönetim Panelimizde aşağıdaki <strong>CNAME</strong> kaydının ekli olduğundan emin olun:
-              <div style={{
-                marginTop: '8px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-medium)',
-                fontFamily: 'Geist Mono, monospace',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <span>CNAME &nbsp; @ &nbsp; cname.vercel-dns.com</span>
-                <button
-                  onClick={() => handleCopy('cname.vercel-dns.com', 'vc-cname')}
-                  style={{ color: copiedCode === 'vc-cname' ? 'var(--emerald)' : 'var(--text-muted)' }}
-                >
-                  {copiedCode === 'vc-cname' ? <Check size={14} /> : <Copy size={14} />}
-                </button>
-              </div>
-            </li>
-            <li style={{ marginTop: '8px' }}>
-              Vercel alan adınızı birkaç saniye içinde doğrulayacak ve ücretsiz SSL sertifikanızı oluşturacaktır!
-            </li>
+        <div style={{ background: '#000000', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid #1a1a1a' }}>
+          <ol style={{ paddingLeft: '18px', fontSize: '12px', color: '#a3a3a3', lineHeight: '1.8' }}>
+            <li>Vercel projenizde <strong>Settings &rarr; Domains</strong> sekmesine gidin.</li>
+            <li><strong style={{ color: '#ffffff' }}>{activeDomain}</strong> adresini yazıp ekleyin.</li>
+            <li>DNS panelinde CNAME kaydı olarak <code style={{ color: '#ffffff' }}>cname.vercel-dns.com</code> ekleyin.</li>
+            <li>SSL sertifikanız otomatik oluşturulacaktır.</li>
           </ol>
         </div>
       )}
 
-      {/* GitHub Pages Guide */}
+      {/* GitHub */}
       {activeTab === 'github' && (
-        <div className="card" style={{ padding: '20px', background: 'var(--bg-surface)' }}>
-          <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>
-            GitHub Pages ile Custom Domain Kullanımı
-          </h5>
-          <ol style={{ paddingLeft: '20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.8' }}>
-            <li>
-              GitHub reponuzda <strong>Settings &rarr; Pages</strong> sekmesine gidin.
-            </li>
-            <li>
-              <strong>Custom domain</strong> kısmına <strong style={{ color: '#ffffff' }}>{activeDomain}</strong> yazıp <strong>Save</strong> yapın.
-            </li>
-            <li>
-              DNS Yönetim Panelimizde bir <strong>CNAME</strong> kaydı oluşturup içeriğine GitHub kullanıcı adresinizi yazın (ör: <code>kullaniciadi.github.io</code>).
-            </li>
-            <li>
-              GitHub sayfasında <strong>Enforce HTTPS</strong> kutucuğunu işaretleyin.
-            </li>
+        <div style={{ background: '#000000', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid #1a1a1a' }}>
+          <ol style={{ paddingLeft: '18px', fontSize: '12px', color: '#a3a3a3', lineHeight: '1.8' }}>
+            <li>GitHub reponuzda <strong>Settings &rarr; Pages</strong> sekmesine gidin.</li>
+            <li>Custom domain kutusuna <strong style={{ color: '#ffffff' }}>{activeDomain}</strong> yazıp kaydedin.</li>
+            <li>DNS panelinde CNAME kaydı olarak <code style={{ color: '#ffffff' }}>kullaniciadi.github.io</code> ekleyin.</li>
           </ol>
         </div>
       )}
 
-      {/* VPS / Nginx Guide */}
+      {/* VPS */}
       {activeTab === 'vps' && (
-        <div className="card" style={{ padding: '20px', background: 'var(--bg-surface)' }}>
-          <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>
-            VPS / Linux Sunucu & Nginx Yapılandırması
-          </h5>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            DNS panelinde sunucunuzun public IP adresini <strong>A Kaydı</strong> olarak ekleyin, ardından sunucunuzda aşağıdaki Nginx bloğunu kullanın:
+        <div style={{ background: '#000000', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid #1a1a1a' }}>
+          <div style={{ fontSize: '12px', color: '#888888', marginBottom: '8px' }}>
+            A kaydı olarak sunucunuzun IP adresini ekleyin, ardından Nginx yapılandırması:
           </div>
-
-          <div style={{
-            position: 'relative',
-            padding: '14px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-medium)',
-            fontFamily: 'Geist Mono, monospace',
-            fontSize: '12px',
-            color: 'var(--text-primary)',
-            overflowX: 'auto',
-          }}>
+          <div style={{ position: 'relative', padding: '12px', background: '#050505', border: '1px solid #1c1c1c', borderRadius: 'var(--radius-sm)', fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' }}>
             <button
               onClick={() => handleCopy(nginxSnippet, 'nginx')}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-surface-elevated)',
-                color: copiedCode === 'nginx' ? 'var(--emerald)' : 'var(--text-muted)',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
+              style={{ position: 'absolute', top: '8px', right: '8px', color: '#888888', fontSize: '11px' }}
             >
-              {copiedCode === 'nginx' ? <Check size={12} /> : <Copy size={12} />}
-              <span>{copiedCode === 'nginx' ? 'Kopyalandı' : 'Kodu Kopyala'}</span>
+              {copiedCode === 'nginx' ? 'Kopyalandı' : 'Kopyala'}
             </button>
             <pre style={{ margin: 0 }}>{nginxSnippet}</pre>
           </div>
         </div>
       )}
 
-      {/* Tunnel Guide */}
+      {/* Tunnel */}
       {activeTab === 'tunnel' && (
-        <div className="card" style={{ padding: '20px', background: 'var(--bg-surface)' }}>
-          <h5 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff', marginBottom: '12px' }}>
-            Cloudflare Tunnel (Port Açmadan / Statik IP Olmadan Yayınlama)
-          </h5>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            Ev bilgisayarınızdaki (localhost) veya Raspberry Pi üzerindeki bir servisi modeminizden port açmadan internete açabilirsiniz:
-          </div>
-
-          <div style={{
-            position: 'relative',
-            padding: '14px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-medium)',
-            fontFamily: 'Geist Mono, monospace',
-            fontSize: '12px',
-            color: 'var(--text-primary)',
-            overflowX: 'auto',
-          }}>
+        <div style={{ background: '#000000', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid #1a1a1a' }}>
+          <div style={{ position: 'relative', padding: '12px', background: '#050505', border: '1px solid #1c1c1c', borderRadius: 'var(--radius-sm)', fontFamily: 'monospace', fontSize: '11px', color: '#ffffff' }}>
             <button
               onClick={() => handleCopy(tunnelSnippet, 'tunnel')}
-              style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-surface-elevated)',
-                color: copiedCode === 'tunnel' ? 'var(--emerald)' : 'var(--text-muted)',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
+              style={{ position: 'absolute', top: '8px', right: '8px', color: '#888888', fontSize: '11px' }}
             >
-              {copiedCode === 'tunnel' ? <Check size={12} /> : <Copy size={12} />}
-              <span>{copiedCode === 'tunnel' ? 'Kopyalandı' : 'Kodu Kopyala'}</span>
+              {copiedCode === 'tunnel' ? 'Kopyalandı' : 'Kopyala'}
             </button>
             <pre style={{ margin: 0 }}>{tunnelSnippet}</pre>
           </div>

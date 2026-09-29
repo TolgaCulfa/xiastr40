@@ -139,6 +139,30 @@ function DashboardContent() {
     showToast('Subdomain ve DNS kayıtları silindi.');
   };
 
+  const handleToggleDdosShield = (subdomainId: string) => {
+    const updated = subdomains.map((s) => {
+      if (s.id === subdomainId) {
+        const nextVal = !s.ddosShieldEnabled;
+        return { ...s, ddosShieldEnabled: nextVal };
+      }
+      return s;
+    });
+
+    setSubdomains(updated);
+    saveStoredSubdomains(updated);
+
+    const updatedCurrent = updated.find((s) => s.id === subdomainId) || null;
+    setSelectedSubdomain(updatedCurrent);
+
+    if (updatedCurrent) {
+      showToast(
+        updatedCurrent.ddosShieldEnabled
+          ? `"${updatedCurrent.fullDomain}" için XİAS Under Attack Modu Açıldı!`
+          : `"${updatedCurrent.fullDomain}" için XİAS Under Attack Modu Kapatıldı.`
+      );
+    }
+  };
+
   return (
     <>
       {toastMessage && (
@@ -175,6 +199,7 @@ function DashboardContent() {
         onToggleProxy={handleToggleProxy}
         onUpdateRedirect={handleUpdateRedirect}
         onDeleteSubdomain={handleDeleteSubdomain}
+        onToggleDdosShield={handleToggleDdosShield}
         onNavigateToSearch={() => router.push('/subdomain-al')}
       />
     </>

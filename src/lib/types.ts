@@ -6,8 +6,8 @@ export interface DnsRecord {
   id: string;
   subdomainId: string;
   type: DnsRecordType;
-  name: string; // e.g. "api" or "@"
-  content: string; // e.g. "192.0.2.1" or "my-app.vercel.app"
+  name: string; // e.g. "@" or "api"
+  content: string; // IP or target hostname
   ttl: number; // 60, 300, 3600 or 1 for auto
   proxied: boolean; // Cloudflare Orange Cloud (CDN/DDoS) vs Grey Cloud (DNS only)
   priority?: number; // for MX
@@ -18,7 +18,7 @@ export interface DnsRecord {
 export interface UrlRedirect {
   id: string;
   subdomainId: string;
-  destinationUrl: string; // e.g. "https://github.com/devtolga"
+  destinationUrl: string;
   statusCode: 301 | 302;
   preservePath: boolean;
   active: boolean;
@@ -37,6 +37,7 @@ export interface ClaimedSubdomain {
   createdAt: string;
   lastPingMs?: number;
   isProxied: boolean;
+  ddosShieldEnabled: boolean; // Cloudflare Under Attack Mode Challenge
 }
 
 export interface CloudflareConfig {

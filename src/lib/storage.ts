@@ -9,124 +9,31 @@ export const RESERVED_SUBDOMAINS = new Set([
 ]);
 
 export const DEFAULT_CLOUDFLARE_CONFIG: CloudflareConfig = {
-  apiToken: '',
-  zoneIdXiasTr: '',
-  zoneIdXiasInfo: '',
+  apiToken: process.env.NEXT_PUBLIC_CLOUDFLARE_API_TOKEN || '',
+  zoneIdXiasTr: '3c63f4f5930fc94160578dc3a3651912',
+  zoneIdXiasInfo: 'b495538d749e90614c9b86c8abc1c2f5',
   autoProxyNewRecords: true,
 };
 
-export const INITIAL_SUBDOMAINS: ClaimedSubdomain[] = [
-  {
-    id: 'sub-1',
-    name: 'dev',
-    domainZone: 'xias.tr',
-    fullDomain: 'dev.xias.tr',
-    description: 'Portfolio & Next.js Vercel Deploy',
-    status: 'active',
-    isProxied: true,
-    lastPingMs: 14,
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-    dnsRecords: [
-      {
-        id: 'rec-1',
-        subdomainId: 'sub-1',
-        type: 'CNAME',
-        name: '@',
-        content: 'cname.vercel-dns.com',
-        ttl: 1,
-        proxied: true,
-        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-      },
-      {
-        id: 'rec-2',
-        subdomainId: 'sub-1',
-        type: 'TXT',
-        name: '_vercel',
-        content: 'vc-domain-verify=dev.xias.tr',
-        ttl: 300,
-        proxied: false,
-        createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-      }
-    ],
-  },
-  {
-    id: 'sub-2',
-    name: 'app',
-    domainZone: 'xias.info',
-    fullDomain: 'app.xias.info',
-    description: 'Production VPS Backend (FastAPI / Docker)',
-    status: 'active',
-    isProxied: true,
-    lastPingMs: 22,
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    dnsRecords: [
-      {
-        id: 'rec-3',
-        subdomainId: 'sub-2',
-        type: 'A',
-        name: '@',
-        content: '185.199.108.153',
-        ttl: 1,
-        proxied: true,
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-      }
-    ],
-  },
-  {
-    id: 'sub-3',
-    name: 'github',
-    domainZone: 'xias.tr',
-    fullDomain: 'github.xias.tr',
-    description: 'Direct 301 URL Forwarding to GitHub Profile',
-    status: 'active',
-    isProxied: true,
-    lastPingMs: 9,
-    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    dnsRecords: [
-      {
-        id: 'rec-4',
-        subdomainId: 'sub-3',
-        type: 'A',
-        name: '@',
-        content: '192.0.2.1', // dummy IP for Cloudflare page rule redirect
-        ttl: 1,
-        proxied: true,
-        createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-      }
-    ],
-    redirect: {
-      id: 'redir-1',
-      subdomainId: 'sub-3',
-      destinationUrl: 'https://github.com/devtolga',
-      statusCode: 301,
-      preservePath: true,
-      active: true,
-      createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-    }
-  }
-];
+// SIFIR SAHTE VERI - Tamamen gerçek kullanıcı verileriyle başlar
+export const INITIAL_SUBDOMAINS: ClaimedSubdomain[] = [];
 
-const LOCAL_STORAGE_KEY = 'xias_cloud_subdomains_v1';
-const CF_CONFIG_KEY = 'xias_cloudflare_config_v1';
+const LOCAL_STORAGE_KEY = 'xias_cloud_subdomains_v2';
+const CF_CONFIG_KEY = 'xias_cloudflare_config_v2';
 
 export function getStoredSubdomains(): ClaimedSubdomain[] {
   if (typeof window === 'undefined') {
-    return INITIAL_SUBDOMAINS;
+    return [];
   }
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_SUBDOMAINS));
-      return INITIAL_SUBDOMAINS;
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
+      return [];
     }
     return JSON.parse(raw);
   } catch (e) {
-    console.error('Failed to read stored subdomains', e);
-    return INITIAL_SUBDOMAINS;
+    return [];
   }
 }
 

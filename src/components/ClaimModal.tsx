@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { DomainZone, ClaimedSubdomain, DnsRecord, UrlRedirect } from '@/lib/types';
-import { X, Cloud, Shield, Globe, ArrowRight, Check, Server, Link as LinkIcon } from 'lucide-react';
+import { X, Server, Globe, Link as LinkIcon, Cloud } from 'lucide-react';
 
 interface ClaimModalProps {
   subdomain: string;
@@ -34,13 +34,12 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
     let redirectConfig: UrlRedirect | undefined = undefined;
 
     if (setupType === 'redirect') {
-      // 301/302 Redirect setup: dummy A record proxied through Cloudflare edge page rules
       records.push({
         id: `rec-${Date.now()}-1`,
         subdomainId: subId,
         type: 'A',
         name: '@',
-        content: '192.0.2.1', // Cloudflare redirect placeholder IP
+        content: '192.0.2.1',
         ttl: 1,
         proxied: true,
         createdAt: now,
@@ -69,7 +68,7 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
         updatedAt: now,
       });
     } else {
-      // A Record
+      // A record
       records.push({
         id: `rec-${Date.now()}-1`,
         subdomainId: subId,
@@ -88,10 +87,11 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
       name: subdomain,
       domainZone: domainZone,
       fullDomain: fullDomain,
-      description: description.trim() || `${setupType.toUpperCase()} Yönlendirmesi`,
+      description: description.trim() || `${setupType.toUpperCase()} Kaydı`,
       status: 'active',
       isProxied: setupType === 'redirect' ? true : isProxied,
-      lastPingMs: 16,
+      ddosShieldEnabled: false,
+      lastPingMs: 12,
       createdAt: now,
       dnsRecords: records,
       redirect: redirectConfig,
@@ -99,7 +99,7 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
 
     setTimeout(() => {
       onSuccess(newSubdomain);
-    }, 300);
+    }, 250);
   };
 
   return (
@@ -109,8 +109,8 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(8px)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(6px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -121,56 +121,43 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
         className="card animate-slide-down"
         style={{
           width: '100%',
-          maxWidth: '560px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-medium)',
+          maxWidth: '520px',
+          background: '#0a0a0a',
+          border: '1px solid #222222',
           boxShadow: 'var(--shadow-modal)',
           maxHeight: '90vh',
           overflowY: 'auto',
         }}
       >
-        {/* Modal Header */}
+        {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '20px 24px',
-          borderBottom: '1px solid var(--border-subtle)',
+          padding: '18px 22px',
+          borderBottom: '1px solid #1a1a1a',
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
-                {fullDomain}
-              </span>
-              <span className="badge badge-success">Ücretsiz</span>
+            <div style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>
+              {fullDomain}
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Subdomain tahsis sihirbazı & Cloudflare DNS yapılandırması
+            <div style={{ fontSize: '12px', color: '#777777', marginTop: '2px' }}>
+              Subdomain yapılandırması
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            style={{
-              padding: '6px',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <button onClick={onClose} style={{ color: '#777777', padding: '4px' }}>
             <X size={18} />
           </button>
         </div>
 
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '22px' }}>
           
-          {/* Setup Type Selector */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-              Yönlendirme / Kullanım Şekli:
+          {/* Setup Type */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '8px' }}>
+              Kayıt Türü:
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
@@ -181,22 +168,21 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
                   setTargetValue('cname.vercel-dns.com');
                 }}
                 style={{
-                  padding: '12px 10px',
-                  borderRadius: 'var(--radius-md)',
-                  background: setupType === 'cname' ? 'var(--cf-orange-subtle)' : 'var(--bg-input)',
-                  border: `1px solid ${setupType === 'cname' ? 'var(--cf-orange-border)' : 'var(--border-subtle)'}`,
-                  color: setupType === 'cname' ? 'var(--cf-orange)' : 'var(--text-secondary)',
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: setupType === 'cname' ? '#ffffff' : '#000000',
+                  color: setupType === 'cname' ? '#000000' : '#888888',
+                  border: `1px solid ${setupType === 'cname' ? '#ffffff' : '#1c1c1c'}`,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '6px',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
                 }}
               >
-                <Server size={18} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>CNAME</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Vercel, GitHub</span>
+                <Server size={15} />
+                <span>CNAME</span>
               </button>
 
               <button
@@ -206,80 +192,75 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
                   setTargetValue('185.199.108.153');
                 }}
                 style={{
-                  padding: '12px 10px',
-                  borderRadius: 'var(--radius-md)',
-                  background: setupType === 'a_record' ? 'var(--cf-orange-subtle)' : 'var(--bg-input)',
-                  border: `1px solid ${setupType === 'a_record' ? 'var(--cf-orange-border)' : 'var(--border-subtle)'}`,
-                  color: setupType === 'a_record' ? 'var(--cf-orange)' : 'var(--text-secondary)',
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: setupType === 'a_record' ? '#ffffff' : '#000000',
+                  color: setupType === 'a_record' ? '#000000' : '#888888',
+                  border: `1px solid ${setupType === 'a_record' ? '#ffffff' : '#1c1c1c'}`,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '6px',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
                 }}
               >
-                <Globe size={18} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>A Kaydı</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>VPS / IP Adresi</span>
+                <Globe size={15} />
+                <span>A Kaydı (IP)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setSetupType('redirect')}
                 style={{
-                  padding: '12px 10px',
-                  borderRadius: 'var(--radius-md)',
-                  background: setupType === 'redirect' ? 'var(--cf-orange-subtle)' : 'var(--bg-input)',
-                  border: `1px solid ${setupType === 'redirect' ? 'var(--cf-orange-border)' : 'var(--border-subtle)'}`,
-                  color: setupType === 'redirect' ? 'var(--cf-orange)' : 'var(--text-secondary)',
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: setupType === 'redirect' ? '#ffffff' : '#000000',
+                  color: setupType === 'redirect' ? '#000000' : '#888888',
+                  border: `1px solid ${setupType === 'redirect' ? '#ffffff' : '#1c1c1c'}`,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '6px',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
                 }}
               >
-                <LinkIcon size={18} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>URL Yönlendir</span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>301 / 302 Link</span>
+                <LinkIcon size={15} />
+                <span>URL Yönlendir</span>
               </button>
             </div>
           </div>
 
-          {/* Dynamic Configuration Fields */}
+          {/* Dynamic input */}
           {setupType === 'cname' && (
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Hedef CNAME Değeri (Hedef Alan Adı):
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#a3a3a3', marginBottom: '6px' }}>
+                Hedef CNAME (Alan Adı):
               </label>
               <input
                 type="text"
                 required
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="ör: cname.vercel-dns.com veya kullanici.github.io"
+                placeholder="ör: cname.vercel-dns.com"
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '9px 12px',
+                  background: '#000000',
+                  border: '1px solid #222222',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
                 }}
               />
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Vercel için <code>cname.vercel-dns.com</code>, GitHub Pages için <code>kullanici.github.io</code> girin.
-              </div>
             </div>
           )}
 
           {setupType === 'a_record' && (
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Hedef IPv4 Sunucu Adresi:
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#a3a3a3', marginBottom: '6px' }}>
+                Hedef IPv4 IP Adresi:
               </label>
               <input
                 type="text"
@@ -289,139 +270,72 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
                 placeholder="ör: 185.199.108.153"
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '9px 12px',
+                  background: '#000000',
+                  border: '1px solid #222222',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
                 }}
               />
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                VPS sunucunuzun veya hosting firmanızın sağladığı IPv4 adresini yazın.
-              </div>
             </div>
           )}
 
           {setupType === 'redirect' && (
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                Yönlendirilecek Hedef Web Adresi (URL):
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: '#a3a3a3', marginBottom: '6px' }}>
+                Yönlendirilecek Hedef Web Linki (URL):
               </label>
               <input
                 type="url"
                 required
                 value={redirectUrl}
                 onChange={(e) => setRedirectUrl(e.target.value)}
-                placeholder="https://github.com/kullaniciadi veya https://linkedin.com/..."
+                placeholder="https://github.com/..."
                 style={{
                   width: '100%',
-                  padding: '10px 14px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
+                  padding: '9px 12px',
+                  background: '#000000',
+                  border: '1px solid #222222',
+                  borderRadius: 'var(--radius-sm)',
                   color: '#ffffff',
-                  fontSize: '14px',
+                  fontSize: '13px',
                 }}
               />
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="redirType"
-                    checked={redirectType === 301}
-                    onChange={() => setRedirectType(301)}
-                  />
-                  <span>301 Kalıcı (Önerilen - SEO Dostu)</span>
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="redirType"
-                    checked={redirectType === 302}
-                    onChange={() => setRedirectType(302)}
-                  />
-                  <span>302 Geçici</span>
-                </label>
-              </div>
             </div>
           )}
 
-          {/* Cloudflare Proxy Option */}
+          {/* Proxy checkbox */}
           {setupType !== 'redirect' && (
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-subtle)',
-              marginBottom: '18px',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: '#000000',
+              border: '1px solid #1a1a1a',
+              marginBottom: '16px',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Cloud size={20} style={{ color: isProxied ? 'var(--cf-orange)' : 'var(--text-muted)' }} />
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-                    Cloudflare Proxy & DDoS Koruması (Turuncu Bulut)
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {isProxied ? 'Aktif: Trafik Cloudflare Anycast CDN üzerinden geçer.' : 'Devre Dışı: Yalnızca DNS çözümlemesi yapılır.'}
-                  </div>
-                </div>
+              <div style={{ fontSize: '12px', color: '#ffffff' }}>
+                Cloudflare Proxy (CDN & DDoS Koruması)
               </div>
-
               <input
                 type="checkbox"
                 checked={isProxied}
                 onChange={(e) => setIsProxied(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--cf-orange)' }}
+                style={{ width: '16px', height: '16px', accentColor: '#ffffff' }}
               />
             </div>
           )}
 
-          {/* Note / Label */}
-          <div style={{ marginBottom: '22px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-              Açıklama / Proje Adı (İsteğe Bağlı):
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="ör: Portfolyo Sitem, API Backend, Blog"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
-                color: '#ffffff',
-                fontSize: '14px',
-              }}
-            />
-          </div>
-
-          {/* Footer Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn-secondary"
-              style={{ padding: '8px 16px' }}
-            >
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
+            <button type="button" onClick={onClose} className="btn-secondary btn-sm">
               İptal
             </button>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary"
-              style={{ padding: '8px 20px' }}
-            >
-              {isSubmitting ? 'Kaydediliyor...' : 'Subdomaini Etkinleştir'}
+            <button type="submit" disabled={isSubmitting} className="btn-primary btn-sm">
+              {isSubmitting ? 'Kaydediliyor...' : 'Etkinleştir'}
             </button>
           </div>
         </form>

@@ -1,25 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DomainZone, ClaimedSubdomain, AvailabilityResult } from '@/lib/types';
 import { sanitizeSubdomainName, validateSubdomainFormat, RESERVED_SUBDOMAINS } from '@/lib/storage';
-import { Search, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Sparkles, Globe, Loader2 } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Globe, Loader2 } from 'lucide-react';
 
 interface SubdomainSearchProps {
   claimedSubdomains: ClaimedSubdomain[];
   onClaimSubdomain: (subdomain: string, zone: DomainZone) => void;
 }
 
-const POPULAR_SUGGESTIONS = ['portfolio', 'dev', 'app', 'studio', 'cloud', 'hub', 'link', 'me'];
-
 export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }: SubdomainSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedZone, setSelectedZone] = useState<DomainZone>('xias.tr');
   const [result, setResult] = useState<AvailabilityResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [isPending, startTransition] = useTransition();
 
-  // Instant check logic with debounce
   useEffect(() => {
     const clean = sanitizeSubdomainName(searchTerm);
     if (!clean) {
@@ -30,7 +26,7 @@ export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }:
 
     setIsChecking(true);
     const timer = setTimeout(() => {
-      // 1. Format check
+      // 1. Format validation
       const validation = validateSubdomainFormat(clean);
       if (!validation.valid) {
         setResult({
@@ -45,7 +41,7 @@ export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }:
         return;
       }
 
-      // 2. Reserved check
+      // 2. Reserved validation
       if (RESERVED_SUBDOMAINS.has(clean)) {
         setResult({
           subdomain: clean,
@@ -53,13 +49,13 @@ export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }:
           fullDomain: `${clean}.${selectedZone}`,
           available: false,
           reason: 'reserved',
-          message: `"${clean}" sistem tarafından ayrılmıştır ve kullanıma açılamaz.`,
+          message: `"${clean}" sistem tarafından rezerve edilmiştir.`,
         });
         setIsChecking(false);
         return;
       }
 
-      // 3. Claimed in local state check
+      // 3. Taken validation in real user state (No fake data!)
       const isTaken = claimedSubdomains.some(
         (s) => s.name.toLowerCase() === clean && s.domainZone === selectedZone
       );
@@ -71,20 +67,20 @@ export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }:
           fullDomain: `${clean}.${selectedZone}`,
           available: false,
           reason: 'taken',
-          message: `"${clean}.${selectedZone}" alan adı daha önce kaydedilmiş.`,
+          message: `"${clean}.${selectedZone}" alan adı daha önce alınmış.`,
         });
         setIsChecking(false);
         return;
       }
 
-      // 4. Available!
+      // 4. Available
       setResult({
         subdomain: clean,
         domainZone: selectedZone,
         fullDomain: `${clean}.${selectedZone}`,
         available: true,
         reason: 'available',
-        message: `Harika! "${clean}.${selectedZone}" şu anda boşta ve tamamen ücretsiz.`,
+        message: `Tebrikler! "${clean}.${selectedZone}" şu anda boşta ve kullanılabilir.`,
       });
       setIsChecking(false);
     }, 200);
@@ -92,301 +88,177 @@ export default function SubdomainSearch({ claimedSubdomains, onClaimSubdomain }:
     return () => clearTimeout(timer);
   }, [searchTerm, selectedZone, claimedSubdomains]);
 
-  const handleSelectSuggestion = (word: string) => {
-    setSearchTerm(word);
-  };
-
-  const handleSwitchZone = (zone: DomainZone) => {
-    setSelectedZone(zone);
-  };
-
-  const alternativeZone: DomainZone = selectedZone === 'xias.tr' ? 'xias.info' : 'xias.tr';
-  const isAltAvailable = result && !result.available && result.reason === 'taken' &&
-    !claimedSubdomains.some(
-      (s) => s.name.toLowerCase() === sanitizeSubdomainName(searchTerm) && s.domainZone === alternativeZone
-    );
-
   return (
-    <section id="search-section" style={{ padding: '48px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-      <div className="container" style={{ maxWidth: '820px' }}>
+    <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+      
+      {/* Search Card */}
+      <div className="card" style={{ padding: '24px', background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
         
-        {/* Section Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-            <Globe size={16} style={{ color: 'var(--cf-orange)' }} />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Subdomain Sorgulama & Tahsis
-            </span>
-          </div>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>
-            İstediğiniz Alan Adını Kontrol Edin
-          </h2>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Kullanmak istediğiniz adı yazın, Cloudflare DNS sistemimizde anında ücretsiz etkinleştirin.
-          </p>
+        {/* Domain Switcher */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginBottom: '16px',
+          padding: '3px',
+          background: '#000000',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid #1c1c1c',
+          width: 'fit-content',
+        }}>
+          <button
+            onClick={() => setSelectedZone('xias.tr')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: selectedZone === 'xias.tr' ? '#000000' : '#888888',
+              background: selectedZone === 'xias.tr' ? '#ffffff' : 'transparent',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            .xias.tr
+          </button>
+
+          <button
+            onClick={() => setSelectedZone('xias.info')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: selectedZone === 'xias.info' ? '#000000' : '#888888',
+              background: selectedZone === 'xias.info' ? '#ffffff' : 'transparent',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            .xias.info
+          </button>
         </div>
 
-        {/* Search Card */}
-        <div className="card" style={{ padding: '24px', background: 'var(--bg-surface)' }}>
-          {/* Domain Zone Switcher Tabs */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '18px',
-            padding: '4px',
-            background: 'var(--bg-input)',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)',
-            width: 'fit-content',
-          }}>
-            <button
-              onClick={() => handleSwitchZone('xias.tr')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: selectedZone === 'xias.tr' ? '#ffffff' : 'var(--text-muted)',
-                background: selectedZone === 'xias.tr' ? 'var(--cf-orange)' : 'transparent',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>.xias.tr</span>
-              <span style={{
-                fontSize: '11px',
-                padding: '1px 6px',
-                borderRadius: 'var(--radius-full)',
-                background: selectedZone === 'xias.tr' ? 'rgba(0,0,0,0.25)' : 'var(--bg-surface-elevated)',
-                color: selectedZone === 'xias.tr' ? '#ffffff' : 'var(--text-secondary)',
-              }}>
-                TR Kök Domain
-              </span>
-            </button>
+        {/* Input box */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: '#000000',
+          border: '1px solid #222222',
+          borderRadius: 'var(--radius-sm)',
+          padding: '4px 8px 4px 14px',
+          gap: '8px',
+        }}>
+          <Search size={16} style={{ color: '#666666', flexShrink: 0 }} />
+          
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="subdomain yazın (ör: app, api, tolga)"
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 500,
+              padding: '10px 0',
+            }}
+            autoComplete="off"
+            spellCheck={false}
+          />
 
-            <button
-              onClick={() => handleSwitchZone('xias.info')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: selectedZone === 'xias.info' ? '#ffffff' : 'var(--text-muted)',
-                background: selectedZone === 'xias.info' ? 'var(--cf-orange)' : 'transparent',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>.xias.info</span>
-              <span style={{
-                fontSize: '11px',
-                padding: '1px 6px',
-                borderRadius: 'var(--radius-full)',
-                background: selectedZone === 'xias.info' ? 'rgba(0,0,0,0.25)' : 'var(--bg-surface-elevated)',
-                color: selectedZone === 'xias.info' ? '#ffffff' : 'var(--text-secondary)',
-              }}>
-                Global INFO
-              </span>
-            </button>
+          <div style={{
+            padding: '5px 10px',
+            borderRadius: 'var(--radius-sm)',
+            background: '#111111',
+            border: '1px solid #222222',
+            color: '#ffffff',
+            fontWeight: 600,
+            fontSize: '13px',
+            userSelect: 'none',
+          }}>
+            .{selectedZone}
           </div>
 
-          {/* Input Box */}
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              style={{
+                color: '#666666',
+                fontSize: '12px',
+                padding: '4px 6px',
+              }}
+            >
+              Temizle
+            </button>
+          )}
+        </div>
+
+        {/* Checking state */}
+        {isChecking && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-medium)',
-            borderRadius: 'var(--radius-md)',
-            padding: '4px 8px 4px 16px',
             gap: '8px',
-            transition: 'border-color 0.15s ease',
+            marginTop: '16px',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: '#000000',
+            border: '1px solid #1a1a1a',
+            color: '#888888',
+            fontSize: '13px',
           }}>
-            <Search size={18} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-            
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="örnek: dev, app, portfolyo, tolga"
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                color: '#ffffff',
-                fontSize: '16px',
-                fontWeight: 500,
-                padding: '12px 0',
-              }}
-              autoComplete="off"
-              spellCheck={false}
-            />
+            <Loader2 size={14} className="pulse-indicator" />
+            <span>Kontrol ediliyor...</span>
+          </div>
+        )}
 
-            <div style={{
+        {/* Result state */}
+        {!isChecking && result && (
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '16px 18px',
+              borderRadius: 'var(--radius-sm)',
+              background: '#000000',
+              border: `1px solid ${result.available ? '#ffffff' : '#333333'}`,
               display: 'flex',
               alignItems: 'center',
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--cf-orange)',
-              fontWeight: 600,
-              fontSize: '14px',
-              userSelect: 'none',
-              flexShrink: 0,
-            }}>
-              .{selectedZone}
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}
+            className="animate-slide-down"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+                    {result.fullDomain}
+                  </span>
+                  <span className={result.available ? 'badge badge-white' : 'badge badge-outline'}>
+                    {result.available ? 'Müsait' : 'Dolu'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#888888', marginTop: '2px' }}>
+                  {result.message}
+                </div>
+              </div>
             </div>
 
-            {searchTerm && (
+            {result.available && (
               <button
-                onClick={() => setSearchTerm('')}
-                style={{
-                  color: 'var(--text-muted)',
-                  fontSize: '12px',
-                  padding: '4px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                }}
+                onClick={() => onClaimSubdomain(result.subdomain, result.domainZone)}
+                className="btn-primary btn-sm"
               >
-                Temizle
+                <span>Hemen Al</span>
+                <ArrowRight size={13} />
               </button>
             )}
           </div>
+        )}
 
-          {/* Quick Suggestions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={12} style={{ color: 'var(--cf-orange)' }} />
-              Örnekler:
-            </span>
-            {POPULAR_SUGGESTIONS.map((word) => (
-              <button
-                key={word}
-                onClick={() => handleSelectSuggestion(word)}
-                style={{
-                  fontSize: '12px',
-                  padding: '3px 9px',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'var(--bg-surface-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  color: 'var(--text-secondary)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {word}
-              </button>
-            ))}
-          </div>
-
-          {/* Live Result State */}
-          {isChecking && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              marginTop: '20px',
-              padding: '14px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-muted)',
-              fontSize: '14px',
-            }} className="animate-fade-in">
-              <Loader2 size={16} className="pulse-indicator" />
-              <span>Domain uygunluğu kontrol ediliyor...</span>
-            </div>
-          )}
-
-          {!isChecking && result && (
-            <div
-              style={{
-                marginTop: '20px',
-                padding: '18px 20px',
-                borderRadius: 'var(--radius-md)',
-                background: result.available
-                  ? 'rgba(16, 185, 129, 0.06)'
-                  : result.reason === 'taken'
-                  ? 'rgba(244, 63, 94, 0.06)'
-                  : 'rgba(245, 158, 11, 0.06)',
-                border: `1px solid ${
-                  result.available
-                    ? 'var(--emerald-border)'
-                    : result.reason === 'taken'
-                    ? 'var(--rose-border)'
-                    : 'var(--amber-border)'
-                }`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '14px',
-              }}
-              className="animate-slide-down"
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{
-                  color: result.available
-                    ? 'var(--emerald)'
-                    : result.reason === 'taken'
-                    ? 'var(--rose)'
-                    : 'var(--amber)',
-                }}>
-                  {result.available ? (
-                    <CheckCircle2 size={24} />
-                  ) : result.reason === 'taken' ? (
-                    <XCircle size={24} />
-                  ) : (
-                    <AlertTriangle size={24} />
-                  )}
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>
-                      {result.fullDomain}
-                    </span>
-                    <span className={result.available ? 'badge badge-success' : 'badge badge-neutral'}>
-                      {result.available ? 'Müsait' : result.reason === 'taken' ? 'Dolu' : 'Ayrılmış'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                    {result.message}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {result.available && (
-                  <button
-                    onClick={() => onClaimSubdomain(result.subdomain, result.domainZone)}
-                    className="btn-primary"
-                    style={{ padding: '9px 18px' }}
-                  >
-                    <span>Hemen Ücretsiz Al</span>
-                    <ArrowRight size={15} />
-                  </button>
-                )}
-
-                {isAltAvailable && (
-                  <button
-                    onClick={() => handleSwitchZone(alternativeZone)}
-                    className="btn-secondary btn-sm"
-                    style={{ borderColor: 'var(--cf-orange-border)', color: 'var(--cf-orange)' }}
-                  >
-                    <span>.{alternativeZone} olarak dene</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-        </div>
       </div>
-    </section>
+    </div>
   );
 }

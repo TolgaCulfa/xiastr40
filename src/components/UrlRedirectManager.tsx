@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ClaimedSubdomain, UrlRedirect } from '@/lib/types';
-import { ArrowRight, ExternalLink, Globe, Link2, Check, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowRight, ExternalLink, Globe, Link2, Check } from 'lucide-react';
 
 interface UrlRedirectManagerProps {
   subdomain: ClaimedSubdomain;
@@ -45,12 +45,12 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
     <div style={{ padding: '20px 0' }}>
       
       {/* Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff' }}>
-          Doğrudan URL Yönlendirme (Page Rule Forwarding)
+      <div style={{ marginBottom: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+          URL Yönlendirme (HTTP 301 / 302)
         </h4>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Sunucu kurmadan veya kod yazmadan <strong>{subdomain.fullDomain}</strong> adresini doğrudan harici bir linke yönlendirin.
+        <p style={{ fontSize: '12px', color: '#888888' }}>
+          <strong>{subdomain.fullDomain}</strong> adresini doğrudan harici bir web bağlantısına yönlendirin.
         </p>
       </div>
 
@@ -58,17 +58,16 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
         gap: '12px',
-        padding: '16px',
-        borderRadius: 'var(--radius-md)',
-        background: 'var(--bg-input)',
-        border: '1px solid var(--border-subtle)',
-        marginBottom: '20px',
+        padding: '12px 16px',
+        borderRadius: 'var(--radius-sm)',
+        background: '#000000',
+        border: '1px solid #1c1c1c',
+        marginBottom: '16px',
         flexWrap: 'wrap',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Globe size={16} style={{ color: 'var(--cf-orange)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Globe size={14} style={{ color: '#ffffff' }} />
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
             https://{subdomain.fullDomain}
           </span>
@@ -77,42 +76,40 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '3px 8px',
+          gap: '4px',
+          padding: '2px 8px',
           borderRadius: 'var(--radius-full)',
-          background: 'var(--cf-orange-subtle)',
-          border: '1px solid var(--cf-orange-border)',
-          color: 'var(--cf-orange)',
+          background: '#161616',
+          border: '1px solid #262626',
+          color: '#ffffff',
           fontSize: '11px',
-          fontWeight: 600,
         }}>
           <span>HTTP {statusCode}</span>
-          <ArrowRight size={12} />
+          <ArrowRight size={11} />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Link2 size={16} style={{ color: 'var(--blue)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Link2 size={14} style={{ color: '#888888' }} />
           <span style={{
             fontSize: '13px',
-            fontWeight: 500,
-            color: destination && destination !== 'https://' ? 'var(--blue)' : 'var(--text-muted)',
-            maxWidth: '240px',
+            color: destination && destination !== 'https://' ? '#ffffff' : '#666666',
+            maxWidth: '260px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {destination && destination !== 'https://' ? destination : 'Hedef URL Bekleniyor...'}
+            {destination && destination !== 'https://' ? destination : 'Hedef URL bekleniyor...'}
           </span>
         </div>
       </div>
 
       {/* Configuration Form */}
-      <form onSubmit={handleSave} className="card" style={{ padding: '20px', background: 'var(--bg-surface)' }}>
+      <form onSubmit={handleSave} style={{ background: '#0a0a0a' }}>
         
         {/* Destination URL */}
-        <div style={{ marginBottom: '18px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-            Yönlendirilecek Hedef Web Adresi:
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
+            Hedef Web Bağlantısı:
           </label>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
@@ -120,15 +117,15 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
               required
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="https://github.com/kullaniciadi veya https://linkedin.com/in/..."
+              placeholder="https://github.com/kullaniciadi veya https://linkedin.com/..."
               style={{
                 flex: 1,
-                padding: '10px 14px',
-                background: 'var(--bg-input)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: 'var(--radius-md)',
+                padding: '9px 12px',
+                background: '#000000',
+                border: '1px solid #222222',
+                borderRadius: 'var(--radius-sm)',
                 color: '#ffffff',
-                fontSize: '14px',
+                fontSize: '13px',
               }}
             />
 
@@ -138,33 +135,30 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-secondary"
-                style={{ padding: '10px 14px' }}
+                style={{ padding: '9px 12px' }}
                 title="Hedef linki yeni sekmede test et"
               >
-                <ExternalLink size={15} />
+                <ExternalLink size={14} />
               </a>
             )}
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Kullanıcılar <strong>{subdomain.fullDomain}</strong> adresini ziyaret ettiğinde anında buraya yönlendirilir.
           </div>
         </div>
 
         {/* Status Code Selection */}
-        <div style={{ marginBottom: '18px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            Yönlendirme Durum Kodu (HTTP Response):
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '8px' }}>
+            Yönlendirme Türü:
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <label style={{
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '10px',
-              padding: '12px',
-              borderRadius: 'var(--radius-md)',
-              background: statusCode === 301 ? 'var(--cf-orange-subtle)' : 'var(--bg-input)',
-              border: `1px solid ${statusCode === 301 ? 'var(--cf-orange-border)' : 'var(--border-subtle)'}`,
+              gap: '8px',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: '#000000',
+              border: `1px solid ${statusCode === 301 ? '#ffffff' : '#1c1c1c'}`,
               cursor: 'pointer',
             }}>
               <input
@@ -172,14 +166,14 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
                 name="statusSelection"
                 checked={statusCode === 301}
                 onChange={() => setStatusCode(301)}
-                style={{ marginTop: '2px', accentColor: 'var(--cf-orange)' }}
+                style={{ marginTop: '2px', accentColor: '#ffffff' }}
               />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-                  301 Moved Permanently
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>
+                  301 Kalıcı (SEO Dostu)
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Kalıcı yönlendirme. Arama motorları (SEO) için en uygunudur ve tarayıcılar tarafından önbelleğe alınır.
+                <div style={{ fontSize: '11px', color: '#666666', marginTop: '2px' }}>
+                  Arama motorları ve tarayıcılar için önerilen yönlendirme.
                 </div>
               </div>
             </label>
@@ -187,11 +181,11 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
             <label style={{
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '10px',
-              padding: '12px',
-              borderRadius: 'var(--radius-md)',
-              background: statusCode === 302 ? 'var(--cf-orange-subtle)' : 'var(--bg-input)',
-              border: `1px solid ${statusCode === 302 ? 'var(--cf-orange-border)' : 'var(--border-subtle)'}`,
+              gap: '8px',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: '#000000',
+              border: `1px solid ${statusCode === 302 ? '#ffffff' : '#1c1c1c'}`,
               cursor: 'pointer',
             }}>
               <input
@@ -199,107 +193,84 @@ export default function UrlRedirectManager({ subdomain, onUpdateRedirect }: UrlR
                 name="statusSelection"
                 checked={statusCode === 302}
                 onChange={() => setStatusCode(302)}
-                style={{ marginTop: '2px', accentColor: 'var(--cf-orange)' }}
+                style={{ marginTop: '2px', accentColor: '#ffffff' }}
               />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-                  302 Found (Geçici)
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>
+                  302 Geçici
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Geçici yönlendirme. Hedef link sık sık değişecekse veya A/B testi yapılıyorsa tercih edilir.
+                <div style={{ fontSize: '11px', color: '#666666', marginTop: '2px' }}>
+                  Hedef URL sık değişecekse tercih edilir.
                 </div>
               </div>
             </label>
           </div>
         </div>
 
-        {/* Path Preservation & Active toggles */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '12px',
-          marginBottom: '20px',
-        }}>
+        {/* Path Preservation & Active */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
           <label style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-subtle)',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            background: '#000000',
+            border: '1px solid #1c1c1c',
             cursor: 'pointer',
+            fontSize: '12px',
+            color: '#a3a3a3',
           }}>
             <input
               type="checkbox"
               checked={preservePath}
               onChange={(e) => setPreservePath(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: 'var(--cf-orange)' }}
+              style={{ accentColor: '#ffffff' }}
             />
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>
-                Yolu Koru (Preserve Path)
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                örn: /hakkimda otomatik olarak hedefe eklenir
-              </div>
-            </div>
+            <span>Yolu Koru (/ornek &rarr; hedef/ornek)</span>
           </label>
 
           <label style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border-subtle)',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            background: '#000000',
+            border: '1px solid #1c1c1c',
             cursor: 'pointer',
+            fontSize: '12px',
+            color: '#a3a3a3',
           }}>
             <input
               type="checkbox"
               checked={isActive}
               onChange={(e) => setIsActive(e.target.checked)}
-              style={{ width: '16px', height: '16px', accentColor: 'var(--emerald)' }}
+              style={{ accentColor: '#ffffff' }}
             />
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: '#ffffff' }}>
-                Yönlendirme Aktif
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Trafik Cloudflare Edge üzerinden anında yönlendirilir
-              </div>
-            </div>
+            <span>Yönlendirme Aktif</span>
           </label>
         </div>
 
-        {/* Footer buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             {currentRedirect && (
-              <button
-                type="button"
-                onClick={handleRemoveRedirect}
-                className="btn-danger"
-              >
-                Yönlendirmeyi Kaldır
+              <button type="button" onClick={handleRemoveRedirect} className="btn-danger btn-sm">
+                Kaldır
               </button>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {savedFeedback && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--emerald)', fontSize: '13px' }}>
-                <Check size={16} />
-                <span>Yönlendirme kuralı kaydedildi!</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ffffff', fontSize: '12px' }}>
+                <Check size={14} />
+                <span>Kaydedildi</span>
               </div>
             )}
 
-            <button
-              type="submit"
-              className="btn-primary"
-              style={{ padding: '8px 20px' }}
-            >
+            <button type="submit" className="btn-primary btn-sm">
               Yapılandırmayı Kaydet
             </button>
           </div>

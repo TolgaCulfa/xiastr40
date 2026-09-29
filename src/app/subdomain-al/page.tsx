@@ -8,13 +8,12 @@ import Footer from '@/components/Footer';
 import { ClaimedSubdomain, DomainZone } from '@/lib/types';
 import { getStoredSubdomains, saveStoredSubdomains } from '@/lib/storage';
 import { useRouter } from 'next/navigation';
-import { Globe, ShieldCheck, Zap, CheckCircle2 } from 'lucide-react';
+import { Globe, ShieldCheck, Zap } from 'lucide-react';
 
 export default function SubdomainAlPage() {
   const router = useRouter();
   const [subdomains, setSubdomains] = useState<ClaimedSubdomain[]>([]);
   const [claimTarget, setClaimTarget] = useState<{ subdomain: string; zone: DomainZone } | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setSubdomains(getStoredSubdomains());
@@ -30,48 +29,30 @@ export default function SubdomainAlPage() {
     saveStoredSubdomains(updated);
     setClaimTarget(null);
 
-    // Redirect to dashboard with notification
     router.push('/dashboard?claimed=' + encodeURIComponent(newSub.fullDomain));
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#000000' }}>
       <Navbar />
 
-      <main style={{ flex: 1, padding: '40px 0 80px 0' }}>
-        <div className="container" style={{ maxWidth: '860px' }}>
+      <main style={{ flex: 1, padding: '40px 0 80px 0', backgroundColor: '#000000' }}>
+        <div className="container" style={{ maxWidth: '820px' }}>
           
-          {/* Header Banner */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--cf-orange-subtle)',
-              border: '1px solid var(--cf-orange-border)',
-              color: 'var(--cf-orange)',
-              fontSize: '13px',
-              fontWeight: 600,
-              marginBottom: '16px',
-            }}>
-              <Globe size={15} />
-              <span>Anında Ücretsiz Subdomain</span>
-            </div>
-
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <h1 style={{
-              fontSize: '38px',
+              fontSize: '32px',
               fontWeight: 700,
               color: '#ffffff',
-              letterSpacing: '-0.03em',
-              marginBottom: '12px',
+              letterSpacing: '-0.02em',
+              marginBottom: '8px',
             }}>
-              Alan Adınızı Seçin & Etkinleştirin
+              Subdomain Seçin & Etkinleştirin
             </h1>
 
-            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', maxWidth: '580px', margin: '0 auto' }}>
-              <strong>xias.tr</strong> veya <strong>xias.info</strong> uzantısıyla dilediğiniz subdomaini arayın, saniyeler içinde DNS ve yönlendirme ayarlarını tamamlayın.
+            <p style={{ fontSize: '15px', color: '#888888', maxWidth: '520px', margin: '0 auto' }}>
+              <strong>xias.tr</strong> veya <strong>xias.info</strong> uzantısıyla dilediğiniz subdomaini arayın, DNS veya IP yönlendirmesini tamamlayın.
             </p>
           </div>
 
@@ -81,30 +62,26 @@ export default function SubdomainAlPage() {
             onClaimSubdomain={handleOpenClaimModal}
           />
 
-          {/* Feature Highlights Minimal Bar */}
+          {/* Feature Highlights */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '16px',
-            marginTop: '36px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '12px',
+            marginTop: '28px',
           }}>
-            <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface)' }}>
-              <div style={{ color: 'var(--cf-orange)' }}>
-                <Zap size={20} />
-              </div>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+              <Zap size={18} style={{ color: '#ffffff' }} />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>Anında Yayılım</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cloudflare Anycast 1 dk TTL desteği</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>Anında Yayılım</div>
+                <div style={{ fontSize: '11px', color: '#666666' }}>Cloudflare Anycast altyapısı</div>
               </div>
             </div>
 
-            <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-surface)' }}>
-              <div style={{ color: 'var(--emerald)' }}>
-                <ShieldCheck size={20} />
-              </div>
+            <div className="card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+              <ShieldCheck size={18} style={{ color: '#ffffff' }} />
               <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>Otomatik SSL & DDoS</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Ücretsiz HTTPS ve saldırı koruması</div>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#ffffff' }}>Otomatik SSL & DDoS</div>
+                <div style={{ fontSize: '11px', color: '#666666' }}>Ücretsiz HTTPS koruması</div>
               </div>
             </div>
           </div>
@@ -112,7 +89,7 @@ export default function SubdomainAlPage() {
         </div>
       </main>
 
-      <Footer onNavigate={() => {}} onOpenSettings={() => {}} />
+      <Footer />
 
       {/* Claim Modal */}
       {claimTarget && (
