@@ -644,23 +644,7 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
             </nav>
           </div>
 
-          {/* Bottom Nameserver Status Indicator */}
-          <div
-            style={{
-              padding: '12px',
-              backgroundColor: '#050505',
-              border: '1px solid #1a1a1a',
-              borderRadius: '4px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#ffffff' }}>Anycast Edge Aktif</span>
-            </div>
-            <div style={{ fontSize: '10px', color: '#666666', marginTop: '3px' }}>
-              NS: ns1.xias.tr &bull; ns2.xias.tr
-            </div>
-          </div>
+
         </aside>
 
         {/* RIGHT MAIN WORKSPACE */}
@@ -916,9 +900,7 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                   <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.02em' }}>
                     Kayıtlı Domainler & DNS Yönetimi
                   </h1>
-                  <p style={{ fontSize: '13px', color: '#888888', marginTop: '2px' }}>
-                    A, AAAA, CNAME, TXT, MX kayıtları, Nameserver kontrolleri ve Anycast WAF
-                  </p>
+
                 </div>
 
                 <button onClick={() => setIsAddDomainModalOpen(true)} className="btn-primary">
@@ -969,8 +951,8 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                                 {sub.fullDomain}
                               </span>
                               {sub.isCustomDomain && sub.nameserverStatus === 'pending' && (
-                                <span style={{ fontSize: '10px', color: '#facc15', background: '#241a05', padding: '1px 5px', borderRadius: '4px', border: '1px solid #713f12', flexShrink: 0 }}>
-                                  🟡 Bekliyor
+                                <span style={{ fontSize: '10px', color: '#60a5fa', background: '#0c1929', padding: '1px 5px', borderRadius: '4px', border: '1px solid #1e3a5f', flexShrink: 0 }}>
+                                  Bekliyor
                                 </span>
                               )}
                             </div>

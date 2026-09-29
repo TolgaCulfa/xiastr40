@@ -269,8 +269,8 @@ export default function DnsTableManager({
           style={{
             padding: '18px 22px',
             borderRadius: 'var(--radius-md)',
-            backgroundColor: subdomain.nameserverStatus === 'pending' ? '#141005' : '#04170a',
-            border: `1px solid ${subdomain.nameserverStatus === 'pending' ? '#422006' : '#14532d'}`,
+            backgroundColor: subdomain.nameserverStatus === 'pending' ? '#0c1929' : '#04170a',
+            border: `1px solid ${subdomain.nameserverStatus === 'pending' ? '#1e3a5f' : '#14532d'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -285,8 +285,8 @@ export default function DnsTableManager({
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#241a05',
-                  border: '1px solid #713f12',
+                  background: '#0c1929',
+                  border: '1px solid #1e3a5f',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -294,7 +294,7 @@ export default function DnsTableManager({
                   marginTop: '2px',
                 }}
               >
-                <AlertTriangle size={18} style={{ color: '#eab308' }} />
+                <AlertTriangle size={18} style={{ color: '#60a5fa' }} />
               </div>
             ) : (
               <div
@@ -321,7 +321,7 @@ export default function DnsTableManager({
                   {subdomain.fullDomain}
                 </span>
 
-                {/* THE YELLOW PENDING BUTTON / BADGE AS REQUESTED */}
+                {/* PENDING BADGE - Light Blue */}
                 {subdomain.nameserverStatus === 'pending' ? (
                   <span
                     style={{
@@ -332,10 +332,9 @@ export default function DnsTableManager({
                       borderRadius: '12px',
                       fontSize: '11px',
                       fontWeight: 700,
-                      backgroundColor: '#291b05',
-                      color: '#facc15',
-                      border: '1px solid #ca8a04',
-                      boxShadow: '0 0 10px rgba(234, 179, 8, 0.25)',
+                      backgroundColor: '#0c1929',
+                      color: '#60a5fa',
+                      border: '1px solid #1e3a5f',
                     }}
                   >
                     <span
@@ -343,12 +342,11 @@ export default function DnsTableManager({
                         width: '7px',
                         height: '7px',
                         borderRadius: '50%',
-                        backgroundColor: '#facc15',
-                        boxShadow: '0 0 8px #facc15',
+                        backgroundColor: '#60a5fa',
                       }}
                       className="animate-pulse"
                     />
-                    <span>🟡 Bekliyor (Pending Nameserver)</span>
+                    <span>Bekliyor (Pending Nameserver)</span>
                   </span>
                 ) : (
                   <span
@@ -366,7 +364,7 @@ export default function DnsTableManager({
                     }}
                   >
                     <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#4ade80' }} />
-                    <span>🟢 Aktif & Anycast WAF Devrede</span>
+                    <span>Aktif</span>
                   </span>
                 )}
               </div>
@@ -374,16 +372,16 @@ export default function DnsTableManager({
               <p style={{ fontSize: '12px', color: '#999999', marginTop: '4px', maxWidth: '600px', lineHeight: '1.4' }}>
                 {subdomain.nameserverStatus === 'pending'
                   ? 'Registrar firmanızdan alan adınızı ns1.xias.tr ve ns2.xias.tr adreslerine yönlendirin. Yönlendirmeyi yaptıktan sonra "Nameserver Kontrol Et" butonuna basarak anında doğrulayabilirsiniz.'
-                  : 'Nameserver kayıtları dünya çapında doğrulandı. Tüm gelen trafik XIAS Anycast ve Turnstile koruma ağından geçmektedir.'}
+                  : 'Nameserver kayıtları doğrulandı.'}
               </p>
 
               {/* Nameserver Box */}
               {subdomain.nameserverStatus === 'pending' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
-                  <code style={{ fontSize: '12px', color: '#facc15', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #332305' }}>
+                  <code style={{ fontSize: '12px', color: '#60a5fa', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #1e3a5f' }}>
                     ns1.xias.tr
                   </code>
-                  <code style={{ fontSize: '12px', color: '#facc15', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #332305' }}>
+                  <code style={{ fontSize: '12px', color: '#60a5fa', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #1e3a5f' }}>
                     ns2.xias.tr
                   </code>
                 </div>
@@ -414,7 +412,6 @@ export default function DnsTableManager({
                 fontWeight: 700,
                 fontSize: '12px',
                 cursor: isVerifyingNS ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(255, 255, 255, 0.15)',
               }}
             >
               <RefreshCw size={14} className={isVerifyingNS ? 'animate-spin' : ''} />
@@ -696,9 +693,8 @@ export default function DnsTableManager({
         </div>
 
         {/* Table Footer */}
-        <div style={{ padding: '12px 18px', background: '#050505', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#666' }}>
+        <div style={{ padding: '12px 18px', background: '#050505', borderTop: '1px solid #1a1a1a', fontSize: '12px', color: '#666' }}>
           <span>Toplam <strong>{records.length}</strong> DNS kaydı listeleniyor</span>
-          <span>PowerDNS 4.9 Anycast Kenar Ağı ile senkronize</span>
         </div>
       </div>
 
