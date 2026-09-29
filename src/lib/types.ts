@@ -25,6 +25,38 @@ export interface UrlRedirect {
   createdAt: string;
 }
 
+export type MaintenanceTemplate = 'minimal-dark' | 'corporate' | 'cloudflare-503' | 'custom-html';
+
+export interface MaintenanceConfig {
+  enabled: boolean;
+  template: MaintenanceTemplate;
+  title?: string;
+  message?: string;
+  customHtml?: string;
+  contactEmail?: string;
+  estimatedMinutes?: number;
+  updatedAt: string;
+}
+
+export interface SslCertificate {
+  issued: boolean;
+  issuer: string;
+  validFrom: string;
+  validUntil: string;
+  cipher: string;
+  serialNumber: string;
+  autoRenew: boolean;
+}
+
+export interface DomainAnalytics {
+  totalRequests: number;
+  uniqueVisitors: number;
+  threatsBlocked: number;
+  bandwidthBytes: number;
+  cacheHitRate: number;
+  history24h: { time: string; requests: number; threats: number }[];
+}
+
 export interface ClaimedSubdomain {
   id: string;
   name: string; // e.g. "tolga"
@@ -38,6 +70,11 @@ export interface ClaimedSubdomain {
   lastPingMs?: number;
   isProxied: boolean;
   ddosShieldEnabled: boolean; // Cloudflare Under Attack Mode Challenge
+  maintenanceConfig?: MaintenanceConfig;
+  sslCert?: SslCertificate;
+  analytics?: DomainAnalytics;
+  isCustomDomain?: boolean;
+  assignedNameservers?: string[];
 }
 
 export interface CloudflareConfig {

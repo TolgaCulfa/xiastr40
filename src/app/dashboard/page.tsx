@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Navbar from '@/components/Navbar';
 import Dashboard from '@/components/Dashboard';
 import Footer from '@/components/Footer';
-import { ClaimedSubdomain, DnsRecord, UrlRedirect } from '@/lib/types';
+import { ClaimedSubdomain, DnsRecord, UrlRedirect, MaintenanceConfig, SslCertificate } from '@/lib/types';
 import { getStoredSubdomains, saveStoredSubdomains } from '@/lib/storage';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -163,6 +163,44 @@ function DashboardContent() {
     }
   };
 
+  const handleUpdateMaintenance = (subdomainId: string, config: MaintenanceConfig) => {
+    const updated = subdomains.map((s) => {
+      if (s.id === subdomainId) {
+        return { ...s, maintenanceConfig: config };
+      }
+      return s;
+    });
+
+    setSubdomains(updated);
+    saveStoredSubdomains(updated);
+
+    const updatedCurrent = updated.find((s) => s.id === subdomainId) || null;
+    setSelectedSubdomain(updatedCurrent);
+
+    showToast(
+      config.enabled
+        ? `"${updatedCurrent?.fullDomain}" için Bakım Modu Açıldı (/bakim)!`
+        : `"${updatedCurrent?.fullDomain}" için Bakım Modu Kapatıldı.`
+    );
+  };
+
+  const handleUpdateSsl = (subdomainId: string, sslCert: SslCertificate) => {
+    const updated = subdomains.map((s) => {
+      if (s.id === subdomainId) {
+        return { ...s, sslCert };
+      }
+      return s;
+    });
+
+    setSubdomains(updated);
+    saveStoredSubdomains(updated);
+
+    const updatedCurrent = updated.find((s) => s.id === subdomainId) || null;
+    setSelectedSubdomain(updatedCurrent);
+
+    showToast(`"${updatedCurrent?.fullDomain}" için 256-Bit SSL Sertifikası Başarıyla Tanımlandı!`);
+  };
+
   return (
     <>
       {toastMessage && (
@@ -200,6 +238,8 @@ function DashboardContent() {
         onUpdateRedirect={handleUpdateRedirect}
         onDeleteSubdomain={handleDeleteSubdomain}
         onToggleDdosShield={handleToggleDdosShield}
+        onUpdateMaintenance={handleUpdateMaintenance}
+        onUpdateSsl={handleUpdateSsl}
         onNavigateToSearch={() => router.push('/subdomain-al')}
       />
     </>
