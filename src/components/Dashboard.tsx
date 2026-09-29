@@ -291,15 +291,16 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '5px 12px',
-              borderRadius: '4px',
-              backgroundColor: '#ffffff',
-              color: '#000000',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+              color: '#ffffff',
               border: 'none',
               fontWeight: 700,
               fontSize: '12px',
               cursor: 'pointer',
-              transition: 'opacity 0.15s ease',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
             }}
           >
             <Plus size={13} />
