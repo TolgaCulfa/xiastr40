@@ -106,7 +106,7 @@ export default function Dashboard({
   onNavigateToSearch,
 }: DashboardProps) {
   const [currentTab, setCurrentTab] = useState<SidebarTab>('home');
-  const [activeSubTab, setActiveSubTab] = useState<'dns' | 'redirect' | 'guides'>('dns');
+  const [activeSubTab, setActiveSubTab] = useState<'dns' | 'email' | 'redirect' | 'ssl' | 'guides'>('dns');
   const [isCopiedDomain, setIsCopiedDomain] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [userEmail, setUserEmail] = useState('Tolgax058@gmail.com');
@@ -142,6 +142,56 @@ export default function Dashboard({
     navigator.clipboard.writeText(text);
     setIsCopiedDomain(true);
     setTimeout(() => setIsCopiedDomain(false), 1600);
+  };
+
+  // Sync domain and tab with browser URL: /dashboard/domains/:username?:pin/:domain/:tab
+  const updateDomainUrl = (sub: ClaimedSubdomain | null, subTab: string) => {
+    if (!sub || typeof window === 'undefined') return;
+    const username = (userEmail.split('@')[0] || 'tolga').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    let pin = localStorage.getItem('xias_user_pin');
+    if (!pin || pin.length !== 6) {
+      pin = Math.floor(100000 + Math.random() * 900000).toString();
+      localStorage.setItem('xias_user_pin', pin);
+    }
+    const cleanTab = subTab.toLowerCase();
+    const newPath = `/dashboard/domains/${username}?${pin}/${sub.fullDomain}/${cleanTab}`;
+    window.history.pushState(null, '', newPath);
+  };
+
+  useEffect(() => {
+    if (activeSub && currentTab === 'domains') {
+      updateDomainUrl(activeSub, activeSubTab);
+    }
+  }, [activeSub?.fullDomain, activeSubTab, currentTab]);
+
+  // Apply Quick Email Presets (Google, Microsoft, Yandex)
+  const handleApplyEmailPreset = (provider: 'google' | 'microsoft' | 'yandex') => {
+    if (!activeSub || !onUpdateSubdomain) return;
+    const now = new Date().toISOString();
+    let presetRecords: DnsRecord[] = [];
+    if (provider === 'google') {
+      presetRecords = [
+        { id: `rec-${Date.now()}-1`, subdomainId: activeSub.id, type: 'MX', name: '@', content: 'ASPMX.L.GOOGLE.COM.', ttl: 300, proxied: false, priority: 1, createdAt: now, updatedAt: now },
+        { id: `rec-${Date.now()}-2`, subdomainId: activeSub.id, type: 'MX', name: '@', content: 'ALT1.ASPMX.L.GOOGLE.COM.', ttl: 300, proxied: false, priority: 5, createdAt: now, updatedAt: now },
+        { id: `rec-${Date.now()}-3`, subdomainId: activeSub.id, type: 'TXT', name: '@', content: 'v=spf1 include:_spf.google.com ~all', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
+      ];
+    } else if (provider === 'microsoft') {
+      presetRecords = [
+        { id: `rec-${Date.now()}-1`, subdomainId: activeSub.id, type: 'MX', name: '@', content: `${activeSub.fullDomain.replace('.', '-')}.mail.protection.outlook.com.`, ttl: 300, proxied: false, priority: 0, createdAt: now, updatedAt: now },
+        { id: `rec-${Date.now()}-2`, subdomainId: activeSub.id, type: 'TXT', name: '@', content: 'v=spf1 include:spf.protection.outlook.com -all', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
+      ];
+    } else if (provider === 'yandex') {
+      presetRecords = [
+        { id: `rec-${Date.now()}-1`, subdomainId: activeSub.id, type: 'MX', name: '@', content: 'mx.yandex.net.', ttl: 300, proxied: false, priority: 10, createdAt: now, updatedAt: now },
+        { id: `rec-${Date.now()}-2`, subdomainId: activeSub.id, type: 'TXT', name: '@', content: 'v=spf1 redirect=_spf.yandex.net', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
+      ];
+    }
+    const updated = {
+      ...activeSub,
+      dnsRecords: [...activeSub.dnsRecords, ...presetRecords],
+    };
+    onUpdateSubdomain(updated);
+    showDashboardToast(`${provider.toUpperCase()} kurumsal e-posta kayıtları eklendi!`);
   };
 
   // Real DoH resolution test
@@ -937,7 +987,10 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                         return (
                           <div
                             key={sub.id}
-                            onClick={() => onSelectSubdomain(sub)}
+                            onClick={() => {
+                              onSelectSubdomain(sub);
+                              updateDomainUrl(sub, activeSubTab);
+                            }}
                             style={{
                               padding: '10px 12px',
                               borderRadius: '4px',
@@ -1032,10 +1085,10 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                         </div>
                       )}
 
-                      {/* Sub-Tabs: DNS / Redirect / Guides */}
-                      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #1a1a1a', marginTop: '20px' }}>
+                      {/* Sub-Tabs: DNS / Email / Redirect / SSL / Guides */}
+                      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #1a1a1a', marginTop: '20px', flexWrap: 'wrap' }}>
                         <button
-                          onClick={() => setActiveSubTab('dns')}
+                          onClick={() => { setActiveSubTab('dns'); updateDomainUrl(activeSub, 'dns'); }}
                           style={{
                             padding: '9px 14px',
                             fontSize: '13px',
@@ -1053,11 +1106,33 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                           }}
                         >
                           <Layers size={14} />
-                          <span>DNS Kayıtları ({activeSub.dnsRecords.length}/6)</span>
+                          <span>DNS Kayıtları</span>
                         </button>
 
                         <button
-                          onClick={() => setActiveSubTab('redirect')}
+                          onClick={() => { setActiveSubTab('email'); updateDomainUrl(activeSub, 'email'); }}
+                          style={{
+                            padding: '9px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: activeSubTab === 'email' ? '#ffffff' : '#777777',
+                            borderBottom: `2px solid ${activeSubTab === 'email' ? '#ffffff' : 'transparent'}`,
+                            background: 'none',
+                            borderTop: 'none',
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Mail size={14} />
+                          <span>Email (Mail & MX)</span>
+                        </button>
+
+                        <button
+                          onClick={() => { setActiveSubTab('redirect'); updateDomainUrl(activeSub, 'redirect'); }}
                           style={{
                             padding: '9px 14px',
                             fontSize: '13px',
@@ -1079,7 +1154,29 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                         </button>
 
                         <button
-                          onClick={() => setActiveSubTab('guides')}
+                          onClick={() => { setActiveSubTab('ssl'); updateDomainUrl(activeSub, 'ssl'); }}
+                          style={{
+                            padding: '9px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: activeSubTab === 'ssl' ? '#ffffff' : '#777777',
+                            borderBottom: `2px solid ${activeSubTab === 'ssl' ? '#ffffff' : 'transparent'}`,
+                            background: 'none',
+                            borderTop: 'none',
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Shield size={14} />
+                          <span>SSL Sertifikası</span>
+                        </button>
+
+                        <button
+                          onClick={() => { setActiveSubTab('guides'); updateDomainUrl(activeSub, 'guides'); }}
                           style={{
                             padding: '9px 14px',
                             fontSize: '13px',
@@ -1113,10 +1210,112 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                         />
                       )}
 
+                      {activeSubTab === 'email' && (
+                        <div style={{
+                          backgroundColor: '#0a0a0c',
+                          border: '1px solid #1f1f23',
+                          borderRadius: '8px',
+                          padding: '24px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '20px',
+                        }}>
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: '0 0 6px 0' }}>
+                              E-posta ve MX Yönetimi ({activeSub.fullDomain})
+                            </h3>
+                            <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
+                              Alan adınız için kurumsal e-posta sağlayıcılarını tek tıkla entegre edin veya özel mail sunucusu tanımlayın.
+                            </p>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                            <button
+                              onClick={() => handleApplyEmailPreset('google')}
+                              style={{
+                                padding: '16px',
+                                backgroundColor: '#121318',
+                                border: '1px solid #232530',
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '13px', marginBottom: '4px' }}>Google Workspace</div>
+                              <div style={{ fontSize: '12px', color: '#9ca3af' }}>Gmail kurumsal MX ve SPF kayıtlarını bağlar.</div>
+                            </button>
+
+                            <button
+                              onClick={() => handleApplyEmailPreset('microsoft')}
+                              style={{
+                                padding: '16px',
+                                backgroundColor: '#121318',
+                                border: '1px solid #232530',
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '13px', marginBottom: '4px' }}>Microsoft 365 / Outlook</div>
+                              <div style={{ fontSize: '12px', color: '#9ca3af' }}>Exchange Online MX ve SPF kayıtlarını bağlar.</div>
+                            </button>
+
+                            <button
+                              onClick={() => handleApplyEmailPreset('yandex')}
+                              style={{
+                                padding: '16px',
+                                backgroundColor: '#121318',
+                                border: '1px solid #232530',
+                                borderRadius: '8px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '13px', marginBottom: '4px' }}>Yandex 360 Kurumsal Mail</div>
+                              <div style={{ fontSize: '12px', color: '#9ca3af' }}>mx.yandex.net ve SPF doğrulaması sağlar.</div>
+                            </button>
+                          </div>
+
+                          {/* Current MX List */}
+                          <div style={{ borderTop: '1px solid #1a1a1e', paddingTop: '16px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '10px' }}>
+                              Bağlı E-posta (MX) Kayıtları:
+                            </div>
+                            {activeSub.dnsRecords.filter((r) => r.type === 'MX').length === 0 ? (
+                              <div style={{ color: '#6b7280', fontSize: '12px', padding: '14px', backgroundColor: '#0d0d10', borderRadius: '6px', textAlign: 'center' }}>
+                                Henüz bu alan adı için MX kaydı bulunmuyor. Yukarıdaki butonlardan birine basarak anında ekleyebilirsiniz.
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {activeSub.dnsRecords.filter((r) => r.type === 'MX').map((r) => (
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#121318', borderRadius: '6px', fontSize: '12px' }}>
+                                    <div>
+                                      <strong style={{ color: '#ffffff' }}>{r.content}</strong>
+                                      <span style={{ color: '#9ca3af', marginLeft: '12px' }}>Öncelik: {r.priority ?? 10}</span>
+                                    </div>
+                                    <span style={{ color: '#4ade80', fontSize: '11px', fontWeight: 600 }}>Aktif (Ready)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {activeSubTab === 'redirect' && (
                         <UrlRedirectManager
                           subdomain={activeSub}
                           onUpdateRedirect={onUpdateRedirect}
+                        />
+                      )}
+
+                      {activeSubTab === 'ssl' && (
+                        <SslManager
+                          subdomains={subdomains}
+                          activeSubdomain={activeSub}
+                          onUpdateSsl={(subId, cert) => {
+                            if (onUpdateSsl) onUpdateSsl(subId, cert);
+                          }}
                         />
                       )}
 

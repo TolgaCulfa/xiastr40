@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { ClaimedSubdomain, DnsRecord, DnsRecordType } from '@/lib/types';
 import { 
-  Plus, Search, RefreshCw, Trash2, Edit3, Shield, Cloud, CloudOff, 
-  Check, AlertTriangle, Globe, Sparkles, Filter, ExternalLink, ArrowRight, X 
+  Plus, Search, RefreshCw, Trash2, Edit3, Cloud, CloudOff, 
+  Check, AlertTriangle, BookOpen, ChevronUp, ChevronDown, 
+  Sliders, Filter, Upload, Download, Sparkles, HelpCircle, 
+  Star, MoreVertical, X, Info
 } from 'lucide-react';
 
 interface DnsTableManagerProps {
@@ -15,17 +17,17 @@ interface DnsTableManagerProps {
 
 const RECORD_TYPES: DnsRecordType[] = ['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'SRV', 'CAA', 'NS', 'PTR'];
 
-const TYPE_COLORS: Record<DnsRecordType, { bg: string; text: string; border: string }> = {
-  A: { bg: '#172554', text: '#60a5fa', border: '#1e3a8a' },
-  AAAA: { bg: '#042f2e', text: '#2dd4bf', border: '#115e59' },
-  CNAME: { bg: '#2e1065', text: '#c084fc', border: '#581c87' },
-  TXT: { bg: '#052e16', text: '#4ade80', border: '#14532d' },
-  MX: { bg: '#431407', text: '#fb923c', border: '#7c2d12' },
-  SRV: { bg: '#422006', text: '#facc15', border: '#713f12' },
-  CAA: { bg: '#083344', text: '#22d3ee', border: '#155e75' },
-  NS: { bg: '#1e1b4b', text: '#818cf8', border: '#312e81' },
-  PTR: { bg: '#27272a', text: '#a1a1aa', border: '#3f3f46' },
-};
+const TTL_OPTIONS = [
+  { label: 'Auto', value: 300 },
+  { label: '1 min', value: 60 },
+  { label: '2 min', value: 120 },
+  { label: '5 min', value: 300 },
+  { label: '10 min', value: 600 },
+  { label: '15 min', value: 900 },
+  { label: '30 min', value: 1800 },
+  { label: '1 hr', value: 3600 },
+  { label: '1 day', value: 86400 },
+];
 
 export default function DnsTableManager({
   subdomain,
@@ -33,27 +35,29 @@ export default function DnsTableManager({
   showToast,
 }: DnsTableManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
   const [isVerifyingNS, setIsVerifyingNS] = useState(false);
-  const [isRefreshingRecords, setIsRefreshingRecords] = useState(false);
   const [nsVerifyResult, setNsVerifyResult] = useState<{
     verified: boolean;
     currentNS?: string[];
     message?: string;
   } | null>(null);
 
-  // Modal State for Add / Edit
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Recommendations accordion state
+  const [showRecommendations, setShowRecommendations] = useState(true);
+
+  // Add / Edit Record Form State (Inline Expandable)
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [recordType, setRecordType] = useState<DnsRecordType>('A');
   const [recordName, setRecordName] = useState('@');
   const [recordContent, setRecordContent] = useState('');
   const [recordTtl, setRecordTtl] = useState(300);
   const [recordProxied, setRecordProxied] = useState(true);
+  const [recordComment, setRecordComment] = useState('');
   const [recordPriority, setRecordPriority] = useState<number>(10);
-  const [recordPort, setRecordPort] = useState<number>(25565);
-  const [recordWeight, setRecordWeight] = useState<number>(5);
-  const [recordTag, setRecordTag] = useState<string>('issue');
+  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState<string>('ALL');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
   const records = subdomain.dnsRecords || [];
 
@@ -63,7 +67,7 @@ export default function DnsTableManager({
       rec.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedTypeFilter === 'ALL' || rec.type === selectedTypeFilter;
+    const matchesType = filterType === 'ALL' || rec.type === filterType;
     return matchesSearch && matchesType;
   });
 
@@ -97,38 +101,37 @@ export default function DnsTableManager({
         });
         showToast(`Nameserver kontrol edildi: Henüz ns1.xias.tr / ns2.xias.tr ile eşleşmedi.`);
       }
-    } catch (err) {
+    } catch {
       showToast('Doğrulama sırasında bir hata oluştu.');
     } finally {
       setIsVerifyingNS(false);
     }
   };
 
-  // Open modal for new record
-  const handleOpenAddModal = (defaultType: DnsRecordType = 'A') => {
+  // Open Form for new record
+  const handleOpenAddForm = (defaultType: DnsRecordType = 'A') => {
     setEditingRecordId(null);
     setRecordType(defaultType);
     setRecordName('@');
     setRecordContent(defaultType === 'A' ? '191.44.68.250' : defaultType === 'CNAME' ? subdomain.fullDomain : '');
     setRecordTtl(300);
     setRecordProxied(true);
+    setRecordComment('');
     setRecordPriority(10);
-    setIsModalOpen(true);
+    setIsAddFormOpen(true);
   };
 
-  // Open modal for edit
-  const handleOpenEditModal = (rec: DnsRecord) => {
+  // Open Form for edit
+  const handleOpenEditForm = (rec: DnsRecord) => {
     setEditingRecordId(rec.id);
     setRecordType(rec.type);
     setRecordName(rec.name);
     setRecordContent(rec.content);
     setRecordTtl(rec.ttl);
     setRecordProxied(rec.proxied);
+    setRecordComment(rec.tag || '');
     setRecordPriority(rec.priority || 10);
-    setRecordPort(rec.port || 25565);
-    setRecordWeight(rec.weight || 5);
-    setRecordTag(rec.tag || 'issue');
-    setIsModalOpen(true);
+    setIsAddFormOpen(true);
   };
 
   // Save record (Create or Edit)
@@ -149,9 +152,7 @@ export default function DnsTableManager({
             ttl: recordTtl,
             proxied: ['A', 'AAAA', 'CNAME'].includes(recordType) ? recordProxied : false,
             priority: ['MX', 'SRV'].includes(recordType) ? recordPriority : undefined,
-            port: recordType === 'SRV' ? recordPort : undefined,
-            weight: recordType === 'SRV' ? recordWeight : undefined,
-            tag: recordType === 'CAA' ? recordTag : undefined,
+            tag: recordComment.trim() || undefined,
             updatedAt: now,
           };
         }
@@ -168,9 +169,7 @@ export default function DnsTableManager({
         ttl: recordTtl,
         proxied: ['A', 'AAAA', 'CNAME'].includes(recordType) ? recordProxied : false,
         priority: ['MX', 'SRV'].includes(recordType) ? recordPriority : undefined,
-        port: recordType === 'SRV' ? recordPort : undefined,
-        weight: recordType === 'SRV' ? recordWeight : undefined,
-        tag: recordType === 'CAA' ? recordTag : undefined,
+        tag: recordComment.trim() || undefined,
         createdAt: now,
         updatedAt: now,
       };
@@ -190,14 +189,14 @@ export default function DnsTableManager({
         }),
       }).catch(console.error);
 
-      showToast(`Yeni ${recordType} kaydı eklendi ve PowerDNS'e aktarıldı.`);
+      showToast(`Yeni ${recordType} kaydı eklendi.`);
     }
 
     onUpdateSubdomain({
       ...subdomain,
       dnsRecords: updatedRecords,
     });
-    setIsModalOpen(false);
+    setIsAddFormOpen(false);
   };
 
   // Delete record
@@ -208,7 +207,6 @@ export default function DnsTableManager({
       dnsRecords: updatedRecords,
     });
 
-    // Async delete from VDS PowerDNS
     fetch(`/api/dns/records?id=${id}`, { method: 'DELETE' }).catch(console.error);
     showToast(`"${name}" kaydı silindi.`);
   };
@@ -231,456 +229,893 @@ export default function DnsTableManager({
     showToast(`Proxy durumu ${!rec.proxied ? 'Açıldı (Proxied)' : 'Kapatıldı (DNS Only)'}`);
   };
 
-  // Quick MX Presets
-  const handleApplyMxPreset = (provider: 'google' | 'microsoft' | 'yandex') => {
-    let presetRecords: DnsRecord[] = [];
-    const now = new Date().toISOString();
-
-    if (provider === 'google') {
-      presetRecords = [
-        { id: `rec-${Date.now()}-1`, subdomainId: subdomain.id, type: 'MX', name: '@', content: 'ASPMX.L.GOOGLE.COM.', ttl: 300, proxied: false, priority: 1, createdAt: now, updatedAt: now },
-        { id: `rec-${Date.now()}-2`, subdomainId: subdomain.id, type: 'MX', name: '@', content: 'ALT1.ASPMX.L.GOOGLE.COM.', ttl: 300, proxied: false, priority: 5, createdAt: now, updatedAt: now },
-        { id: `rec-${Date.now()}-3`, subdomainId: subdomain.id, type: 'TXT', name: '@', content: 'v=spf1 include:_spf.google.com ~all', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
-      ];
-    } else if (provider === 'microsoft') {
-      presetRecords = [
-        { id: `rec-${Date.now()}-1`, subdomainId: subdomain.id, type: 'MX', name: '@', content: `${subdomain.fullDomain.replace('.', '-')}.mail.protection.outlook.com.`, ttl: 300, proxied: false, priority: 0, createdAt: now, updatedAt: now },
-        { id: `rec-${Date.now()}-2`, subdomainId: subdomain.id, type: 'TXT', name: '@', content: 'v=spf1 include:spf.protection.outlook.com -all', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
-      ];
-    } else if (provider === 'yandex') {
-      presetRecords = [
-        { id: `rec-${Date.now()}-1`, subdomainId: subdomain.id, type: 'MX', name: '@', content: 'mx.yandex.net.', ttl: 300, proxied: false, priority: 10, createdAt: now, updatedAt: now },
-        { id: `rec-${Date.now()}-2`, subdomainId: subdomain.id, type: 'TXT', name: '@', content: 'v=spf1 redirect=_spf.yandex.net', ttl: 300, proxied: false, createdAt: now, updatedAt: now },
-      ];
-    }
-
-    onUpdateSubdomain({
-      ...subdomain,
-      dnsRecords: [...records, ...presetRecords],
+  // Export BIND Zone file
+  const handleExportZone = () => {
+    let zoneContent = `; BIND zone file for ${subdomain.fullDomain}\n; Exported from XiasTr Cloud DNS\n$ORIGIN ${subdomain.fullDomain}.\n$TTL 300\n\n`;
+    records.forEach((r) => {
+      const name = r.name === '@' ? '@' : r.name;
+      zoneContent += `${name.padEnd(20)} ${r.ttl.toString().padEnd(8)} IN ${r.type.padEnd(6)} ${r.content}\n`;
     });
-    showToast(`${provider.toUpperCase()} MX ve SPF kayıtları başarıyla eklendi!`);
+
+    const blob = new Blob([zoneContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${subdomain.fullDomain}.zone.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`"${subdomain.fullDomain}.zone.txt" başarıyla indirildi.`);
+  };
+
+  // Checkbox Selection
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedRecords(filteredRecords.map((r) => r.id));
+    } else {
+      setSelectedRecords([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    if (selectedRecords.includes(id)) {
+      setSelectedRecords(selectedRecords.filter((i) => i !== id));
+    } else {
+      setSelectedRecords([...selectedRecords, id]);
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* 1. NAMESERVER STATUS BANNER (Yellow Pending or Green Active) */}
-      {subdomain.isCustomDomain && (
-        <div
-          style={{
-            padding: '18px 22px',
-            borderRadius: 'var(--radius-md)',
-            backgroundColor: subdomain.nameserverStatus === 'pending' ? '#0c1929' : '#04170a',
-            border: `1px solid ${subdomain.nameserverStatus === 'pending' ? '#1e3a5f' : '#14532d'}`,
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', color: '#ffffff', fontFamily: 'inherit' }}>
+      
+      {/* 1. TOP BREADCRUMB / SITE BAR (Exact Cloudflare Header) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1a1a1e', paddingBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Star size={16} style={{ color: '#9ca3af', cursor: 'pointer' }} />
+          <span style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff' }}>
+            {subdomain.fullDomain}
+          </span>
+          <span style={{
+            fontSize: '11px',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #2e2e34',
+            backgroundColor: '#141416',
+            color: '#9ca3af',
+            fontWeight: 500,
+          }}>
+            free
+          </span>
+          <MoreVertical size={15} style={{ color: '#6b7280', cursor: 'pointer' }} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '14px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-            {subdomain.nameserverStatus === 'pending' ? (
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: '#0c1929',
-                  border: '1px solid #1e3a5f',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '2px',
-                }}
-              >
-                <AlertTriangle size={18} style={{ color: '#60a5fa' }} />
-              </div>
-            ) : (
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: '#052e16',
-                  border: '1px solid #14532d',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '2px',
-                }}
-              >
-                <Check size={18} style={{ color: '#22c55e' }} />
-              </div>
-            )}
+            gap: '6px',
+            fontSize: '12px',
+            color: '#d1d5db',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}>
+            <Sparkles size={14} style={{ color: '#38bdf8' }} />
+            <span>Ask AI</span>
+          </button>
 
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>
-                  {subdomain.fullDomain}
-                </span>
-
-                {/* PENDING BADGE - Light Blue */}
-                {subdomain.nameserverStatus === 'pending' ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor: '#0c1929',
-                      color: '#60a5fa',
-                      border: '1px solid #1e3a5f',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        backgroundColor: '#60a5fa',
-                      }}
-                      className="animate-pulse"
-                    />
-                    <span>Bekliyor (Pending Nameserver)</span>
-                  </span>
-                ) : (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      backgroundColor: '#052e16',
-                      color: '#4ade80',
-                      border: '1px solid #22c55e',
-                    }}
-                  >
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#4ade80' }} />
-                    <span>Aktif</span>
-                  </span>
-                )}
-              </div>
-
-              <p style={{ fontSize: '12px', color: '#999999', marginTop: '4px', maxWidth: '600px', lineHeight: '1.4' }}>
-                {subdomain.nameserverStatus === 'pending'
-                  ? 'Registrar firmanızdan alan adınızı ns1.xias.tr ve ns2.xias.tr adreslerine yönlendirin. Yönlendirmeyi yaptıktan sonra "Nameserver Kontrol Et" butonuna basarak anında doğrulayabilirsiniz.'
-                  : 'Nameserver kayıtları doğrulandı.'}
-              </p>
-
-              {/* Nameserver Box */}
-              {subdomain.nameserverStatus === 'pending' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '10px' }}>
-                  <code style={{ fontSize: '12px', color: '#60a5fa', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #1e3a5f' }}>
-                    ns1.xias.tr
-                  </code>
-                  <code style={{ fontSize: '12px', color: '#60a5fa', background: '#0a0a0a', padding: '3px 8px', borderRadius: '4px', border: '1px solid #1e3a5f' }}>
-                    ns2.xias.tr
-                  </code>
-                </div>
-              )}
-
-              {nsVerifyResult && !nsVerifyResult.verified && (
-                <div style={{ marginTop: '8px', fontSize: '11px', color: '#f87171' }}>
-                  {nsVerifyResult.message}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* VERIFY BUTTON WITH SPINNING SVG ICON AS REQUESTED */}
-          {subdomain.nameserverStatus === 'pending' && (
-            <button
-              onClick={handleVerifyNameserver}
-              disabled={isVerifyingNS}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 16px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: '#ffffff',
-                color: '#000000',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '12px',
-                cursor: isVerifyingNS ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <RefreshCw size={14} className={isVerifyingNS ? 'animate-spin' : ''} />
-              <span>{isVerifyingNS ? 'Kontrol Ediliyor...' : 'Nameserver Kontrol Et'}</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* 2. DNS TOOLBAR & PRESETS */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-        {/* Left: Search & Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1', minWidth: '280px', maxWidth: '520px' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="DNS kayıtlarında ara (örn: www, mail, IP)..."
-              style={{
-                width: '100%',
-                padding: '8px 12px 8px 34px',
-                background: '#0a0a0a',
-                border: '1px solid #222222',
-                borderRadius: 'var(--radius-sm)',
-                color: '#ffffff',
-                fontSize: '12px',
-              }}
-            />
-          </div>
-
-          {/* Type Filter */}
-          <select
-            value={selectedTypeFilter}
-            onChange={(e) => setSelectedTypeFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              background: '#0a0a0a',
-              border: '1px solid #222222',
-              borderRadius: 'var(--radius-sm)',
-              color: '#ffffff',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <option value="ALL">Tüm Kayıtlar</option>
-            {RECORD_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Right: Actions & MX Presets */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* MX Presets Dropdown */}
-          <select
-            onChange={(e) => {
-              if (e.target.value) {
-                handleApplyMxPreset(e.target.value as any);
-                e.target.value = '';
-              }
-            }}
-            defaultValue=""
-            style={{
-              padding: '8px 12px',
-              background: '#0a0a0a',
-              border: '1px solid #222222',
-              borderRadius: 'var(--radius-sm)',
-              color: '#888888',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <option value="" disabled>⚡ MX Şablonu Ekle</option>
-            <option value="google">Google Workspace</option>
-            <option value="microsoft">Microsoft 365 / Outlook</option>
-            <option value="yandex">Yandex 360 Mail</option>
-          </select>
-
-          {/* Add Record Button */}
-          <button
-            onClick={() => handleOpenAddModal('A')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: '#ffffff',
-              color: '#000000',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={14} />
-            <span>Kayıt Ekle</span>
+          <button style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '12px',
+            color: '#d1d5db',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}>
+            <HelpCircle size={14} style={{ color: '#9ca3af' }} />
+            <span>Support</span>
           </button>
         </div>
       </div>
 
-      {/* 3. CLOUDFLARE STYLE DNS RECORDS TABLE (10+ TYPES) */}
-      <div
-        className="card"
-        style={{
-          padding: '0',
-          backgroundColor: '#0a0a0a',
-          border: '1px solid #1a1a1a',
-          overflow: 'hidden',
-          borderRadius: 'var(--radius-md)',
-        }}
-      >
+      {/* 2. MAIN TITLE ROW */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+        <div>
+          <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.5px', margin: 0 }}>
+            DNS records for {subdomain.fullDomain}
+          </h1>
+          <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '6px', margin: 0 }}>
+            Manage how the Internet finds your web content, verifies services, and routes traffic.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            padding: '6px 14px',
+            borderRadius: '9999px',
+            backgroundColor: '#141416',
+            border: '1px solid #2e2e34',
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#e5e7eb',
+          }}>
+            DNS Setup: Full
+          </div>
+
+          <a
+            href="https://developers.cloudflare.com/dns/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              backgroundColor: '#141416',
+              border: '1px solid #2e2e34',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#e5e7eb',
+              textDecoration: 'none',
+            }}
+          >
+            <BookOpen size={13} style={{ color: '#9ca3af' }} />
+            <span>DNS documentation</span>
+          </a>
+        </div>
+      </div>
+
+      {/* 3. NAMESERVER PENDING NOTICE (If Custom Domain & Not Active) */}
+      {subdomain.isCustomDomain && subdomain.nameserverStatus === 'pending' && (
+        <div style={{
+          backgroundColor: '#0c1017',
+          border: '1px solid #1e293b',
+          borderRadius: '8px',
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#60a5fa' }}>
+                Nameserver Kurulumunu Tamamlayın
+              </span>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                (ns1.xias.tr & ns2.xias.tr)
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
+              Alan adı firmanızdan NS adreslerinizi yönlendirdikten sonra aşağıdaki butona basarak anında doğrulayabilirsiniz.
+            </p>
+          </div>
+
+          <button
+            onClick={handleVerifyNameserver}
+            disabled={isVerifyingNS}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '7px 14px',
+              borderRadius: '6px',
+              backgroundColor: '#1e293b',
+              border: '1px solid #334155',
+              color: '#ffffff',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: isVerifyingNS ? 'not-allowed' : 'pointer',
+            }}
+          >
+            <RefreshCw size={13} className={isVerifyingNS ? 'animate-spin' : ''} />
+            <span>{isVerifyingNS ? 'Kontrol Ediliyor...' : 'Nameserver Kontrol Et'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* 4. RECOMMENDATIONS ACCORDION BOX (Exact Cloudflare Layout) */}
+      <div style={{
+        backgroundColor: '#0a0a0c',
+        border: '1px solid #1f1f23',
+        borderRadius: '8px',
+        overflow: 'hidden',
+      }}>
+        {/* Accordion Header */}
+        <div 
+          onClick={() => setShowRecommendations(!showRecommendations)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            cursor: 'pointer',
+            borderBottom: showRecommendations ? '1px solid #1f1f23' : 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+              Recommendations
+            </span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              borderRadius: '9999px',
+              width: '18px',
+              height: '18px',
+              fontSize: '11px',
+              fontWeight: 700,
+            }}>
+              3
+            </span>
+          </div>
+
+          <div style={{ color: '#9ca3af' }}>
+            {showRecommendations ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+        </div>
+
+        {/* Accordion Body */}
+        {showRecommendations && (
+          <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {/* Item 1 */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: '#3b82f6',
+                marginTop: '6px',
+                flexShrink: 0,
+              }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                  Visitors cannot reach www.{subdomain.fullDomain}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                  Add an A, AAAA, or CNAME record for www and optionally <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>create a redirect rule</span> to send visitors to {subdomain.fullDomain}.
+                </div>
+              </div>
+            </div>
+
+            {/* Item 2 */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                backgroundColor: '#3b82f6',
+                marginTop: '6px',
+                flexShrink: 0,
+              }} />
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                  Visitors cannot reach {subdomain.fullDomain}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                  Add an A, AAAA, or CNAME record for the root domain.
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom link */}
+            <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+              <button 
+                type="button"
+                onClick={() => showToast('Tüm 3 optimizasyon önerisi gösteriliyor.')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#93c5fd',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Show all 3 recommendations
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. TOOLBAR ROW (Exact Cloudflare Search + Buttons) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        marginTop: '6px',
+      }}>
+        {/* Left: Search DNS Records */}
+        <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+          <Search size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search DNS Records"
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 34px',
+              backgroundColor: '#0c0d12',
+              border: '1px solid #232530',
+              borderRadius: '6px',
+              color: '#ffffff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        {/* Right Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Filters Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                backgroundColor: '#121318',
+                border: '1px solid #232530',
+                borderRadius: '6px',
+                color: '#d1d5db',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              <Filter size={13} style={{ color: '#9ca3af' }} />
+              <span>Filters</span>
+            </button>
+
+            {showFilterDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '110%',
+                right: 0,
+                backgroundColor: '#0c0d12',
+                border: '1px solid #232530',
+                borderRadius: '6px',
+                padding: '6px',
+                zIndex: 50,
+                width: '140px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.7)',
+              }}>
+                <div
+                  onClick={() => { setFilterType('ALL'); setShowFilterDropdown(false); }}
+                  style={{ padding: '6px 10px', fontSize: '11px', color: filterType === 'ALL' ? '#60a5fa' : '#d1d5db', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  Tüm Kayıtlar
+                </div>
+                {RECORD_TYPES.map((t) => (
+                  <div
+                    key={t}
+                    onClick={() => { setFilterType(t); setShowFilterDropdown(false); }}
+                    style={{ padding: '6px 10px', fontSize: '11px', color: filterType === t ? '#60a5fa' : '#d1d5db', cursor: 'pointer', borderRadius: '4px' }}
+                  >
+                    {t} Kayıtları
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Display options */}
+          <button
+            onClick={() => showToast('Görüntüleme seçenekleri: Standart')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              backgroundColor: '#121318',
+              border: '1px solid #232530',
+              borderRadius: '6px',
+              color: '#d1d5db',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Sliders size={13} style={{ color: '#9ca3af' }} />
+            <span>Display options</span>
+          </button>
+
+          {/* Import */}
+          <button
+            onClick={() => {
+              const input = prompt('BIND Zone formatında kayıt ekleyin veya IP girin (örn: 191.44.68.250):');
+              if (input) {
+                handleOpenAddForm('A');
+                setRecordContent(input);
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              backgroundColor: '#121318',
+              border: '1px solid #232530',
+              borderRadius: '6px',
+              color: '#d1d5db',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Upload size={13} style={{ color: '#9ca3af' }} />
+            <span>Import</span>
+          </button>
+
+          {/* Export */}
+          <button
+            onClick={handleExportZone}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              backgroundColor: '#121318',
+              border: '1px solid #232530',
+              borderRadius: '6px',
+              color: '#d1d5db',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <Download size={13} style={{ color: '#9ca3af' }} />
+            <span>Export</span>
+          </button>
+
+          {/* + Add record (SOLID CLOUDFLARE BLUE) */}
+          <button
+            onClick={() => handleOpenAddForm('A')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 16px',
+              backgroundColor: '#0051c3',
+              border: 'none',
+              borderRadius: '6px',
+              color: '#ffffff',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0, 81, 195, 0.4)',
+            }}
+          >
+            <Plus size={14} />
+            <span>Add record</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 6. RECORD COUNTER TEXT */}
+      <div style={{ fontSize: '13px', color: '#9ca3af' }}>
+        You have used <strong style={{ color: '#ffffff' }}>{records.length}</strong> of <strong>200</strong> available DNS records in this domain.
+      </div>
+
+      {/* 7. INLINE ADD / EDIT RECORD FORM (Cloudflare Inline Card) */}
+      {isAddFormOpen && (
+        <form
+          onSubmit={handleSaveRecord}
+          style={{
+            backgroundColor: '#0d0e14',
+            border: '1px solid #0051c3',
+            borderRadius: '8px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e202a', paddingBottom: '12px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
+              {editingRecordId ? 'Edit DNS Record' : 'Add DNS Record'}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsAddFormOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px' }}>
+            {/* Type */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                Type
+              </label>
+              <select
+                value={recordType}
+                onChange={(e) => setRecordType(e.target.value as DnsRecordType)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: '#050508',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+              >
+                {RECORD_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Name */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                Name (use @ for root)
+              </label>
+              <input
+                type="text"
+                required
+                value={recordName}
+                onChange={(e) => setRecordName(e.target.value)}
+                placeholder="@ or www"
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: '#050508',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                }}
+              />
+            </div>
+
+            {/* IPv4 Address / Content */}
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                {recordType === 'A' ? 'IPv4 address' : recordType === 'AAAA' ? 'IPv6 address' : recordType === 'CNAME' ? 'Target' : 'Content'}
+              </label>
+              <input
+                type="text"
+                required
+                value={recordContent}
+                onChange={(e) => setRecordContent(e.target.value)}
+                placeholder={recordType === 'A' ? '191.44.68.250' : 'Target domain or text'}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: '#050508',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+
+            {/* Proxy Status Switch */}
+            {['A', 'AAAA', 'CNAME'].includes(recordType) && (
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                  Proxy status
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setRecordProxied(!recordProxied)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: recordProxied ? '#3c1808' : '#141416',
+                    border: `1px solid ${recordProxied ? '#f38020' : '#27272a'}`,
+                    color: recordProxied ? '#f38020' : '#9ca3af',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  {recordProxied ? <Cloud size={14} style={{ color: '#f38020' }} /> : <CloudOff size={14} />}
+                  <span>{recordProxied ? 'Proxied' : 'DNS only'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* TTL */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                TTL
+              </label>
+              <select
+                value={recordTtl}
+                onChange={(e) => setRecordTtl(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: '#050508',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                }}
+              >
+                {TTL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#9ca3af', marginBottom: '6px' }}>
+                Comment
+              </label>
+              <input
+                type="text"
+                value={recordComment}
+                onChange={(e) => setRecordComment(e.target.value)}
+                placeholder="Optional notes"
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: '#050508',
+                  border: '1px solid #27272a',
+                  borderRadius: '6px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Form Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setIsAddFormOpen(false)}
+              style={{
+                padding: '7px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid #27272a',
+                borderRadius: '6px',
+                color: '#d1d5db',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '7px 18px',
+                backgroundColor: '#0051c3',
+                border: 'none',
+                borderRadius: '6px',
+                color: '#ffffff',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* 8. EXACT CLOUDFLARE DNS TABLE */}
+      <div style={{
+        border: '1px solid #1f1f23',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        backgroundColor: '#08080a',
+      }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #222222', background: '#050505', color: '#888888', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <th style={{ padding: '12px 18px', width: '90px' }}>Tür</th>
-                <th style={{ padding: '12px 16px', width: '160px' }}>Ad (Name)</th>
-                <th style={{ padding: '12px 16px' }}>İçerik (Content)</th>
-                <th style={{ padding: '12px 16px', width: '120px' }}>TTL</th>
-                <th style={{ padding: '12px 16px', width: '150px' }}>Proxy Durumu</th>
-                <th style={{ padding: '12px 18px', width: '110px', textAlign: 'right' }}>İşlemler</th>
+              <tr style={{
+                backgroundColor: '#0a0a0d',
+                borderBottom: '1px solid #1f1f23',
+                color: '#9ca3af',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}>
+                <th style={{ padding: '12px 14px', width: '40px' }}>
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={filteredRecords.length > 0 && selectedRecords.length === filteredRecords.length}
+                    style={{ accentColor: '#0051c3', cursor: 'pointer' }}
+                  />
+                </th>
+                <th style={{ padding: '12px 14px', minWidth: '150px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>Name</span>
+                    <Info size={12} style={{ color: '#6b7280' }} />
+                  </div>
+                </th>
+                <th style={{ padding: '12px 14px', width: '90px' }}>
+                  <span>Type ^</span>
+                </th>
+                <th style={{ padding: '12px 14px', minWidth: '220px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>Content</span>
+                    <Info size={12} style={{ color: '#6b7280' }} />
+                  </div>
+                </th>
+                <th style={{ padding: '12px 14px', width: '130px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>Proxy status</span>
+                    <Info size={12} style={{ color: '#6b7280' }} />
+                  </div>
+                </th>
+                <th style={{ padding: '12px 14px', width: '90px' }}>
+                  <span>TTL</span>
+                </th>
+                <th style={{ padding: '12px 14px', width: '80px' }}>
+                  <span>Tags</span>
+                </th>
+                <th style={{ padding: '12px 14px', width: '110px' }}>
+                  <span>Comment</span>
+                </th>
+                <th style={{ padding: '12px 14px', width: '90px', textAlign: 'right' }}>
+                  <span>Details</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: '#666' }}>
-                    Kayıt bulunamadı. "Kayıt Ekle" butonuna basarak yeni bir DNS kaydı ekleyebilirsiniz.
+                  <td colSpan={9} style={{ padding: '42px 20px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+                    No DNS records. Add a DNS record individually or import a BIND file above.
                   </td>
                 </tr>
               ) : (
                 filteredRecords.map((rec) => {
-                  const typeStyle = TYPE_COLORS[rec.type] || { bg: '#222', text: '#fff', border: '#444' };
                   const isProxyable = ['A', 'AAAA', 'CNAME'].includes(rec.type);
+                  const isSelected = selectedRecords.includes(rec.id);
 
                   return (
                     <tr
                       key={rec.id}
                       style={{
-                        borderBottom: '1px solid #141414',
+                        borderBottom: '1px solid #141416',
+                        backgroundColor: isSelected ? 'rgba(0, 81, 195, 0.08)' : 'transparent',
                         transition: 'background-color 0.15s ease',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#111111')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = '#0e0f14';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                     >
-                      {/* Type Badge */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            fontFamily: 'monospace',
-                            backgroundColor: typeStyle.bg,
-                            color: typeStyle.text,
-                            border: `1px solid ${typeStyle.border}`,
-                          }}
-                        >
-                          {rec.type}
-                        </span>
+                      {/* Checkbox */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectRow(rec.id)}
+                          style={{ accentColor: '#0051c3', cursor: 'pointer' }}
+                        />
                       </td>
 
                       {/* Name */}
-                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#ffffff' }}>
-                        {rec.name}
-                        {rec.name === '@' ? ` (${subdomain.fullDomain})` : `.${subdomain.fullDomain}`}
+                      <td style={{ padding: '12px 14px', fontWeight: 500, color: '#ffffff' }}>
+                        {rec.name === '@' ? subdomain.fullDomain : `${rec.name}.${subdomain.fullDomain}`}
+                      </td>
+
+                      {/* Type */}
+                      <td style={{ padding: '12px 14px', fontWeight: 600, color: '#ffffff' }}>
+                        {rec.type}
                       </td>
 
                       {/* Content */}
-                      <td style={{ padding: '14px 16px', color: '#cccccc', wordBreak: 'break-all' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                          {rec.content}
-                        </span>
-                        {rec.priority !== undefined && (
-                          <span style={{ marginLeft: '8px', fontSize: '11px', color: '#888', background: '#1c1c1c', padding: '2px 6px', borderRadius: '3px' }}>
-                            Priority: {rec.priority}
-                          </span>
-                        )}
-                        {rec.port !== undefined && (
-                          <span style={{ marginLeft: '6px', fontSize: '11px', color: '#888', background: '#1c1c1c', padding: '2px 6px', borderRadius: '3px' }}>
-                            Port: {rec.port}
-                          </span>
-                        )}
+                      <td style={{ padding: '12px 14px', color: '#d1d5db', fontFamily: 'monospace', fontSize: '12px' }}>
+                        {rec.content}
                       </td>
 
-                      {/* TTL */}
-                      <td style={{ padding: '14px 16px', color: '#888888', fontSize: '12px' }}>
-                        {rec.ttl === 1 || rec.ttl === 300 ? 'Otomatik (300s)' : `${rec.ttl} sn`}
-                      </td>
-
-                      {/* Proxied Toggle */}
-                      <td style={{ padding: '14px 16px' }}>
+                      {/* Proxy status */}
+                      <td style={{ padding: '12px 14px' }}>
                         {isProxyable ? (
                           <button
                             type="button"
                             onClick={() => handleToggleProxy(rec)}
-                            title={rec.proxied ? 'WAF & DDoS korumalı (Trafik XIAS Kenar Ağında)' : 'Sadece DNS (Trafik doğrudan sunucuya gider)'}
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              background: rec.proxied ? '#431407' : '#1a1a1a',
-                              border: `1px solid ${rec.proxied ? '#ea580c' : '#333333'}`,
-                              color: rec.proxied ? '#fb923c' : '#888888',
-                              fontSize: '11px',
-                              fontWeight: 700,
+                              background: 'none',
+                              border: 'none',
                               cursor: 'pointer',
-                              transition: 'all 0.15s ease',
+                              color: rec.proxied ? '#f38020' : '#9ca3af',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              padding: 0,
                             }}
                           >
                             {rec.proxied ? (
                               <>
-                                <Cloud size={13} style={{ color: '#ea580c' }} />
+                                <Cloud size={14} style={{ color: '#f38020' }} />
                                 <span>Proxied</span>
                               </>
                             ) : (
                               <>
-                                <CloudOff size={13} style={{ color: '#888' }} />
-                                <span>DNS Only</span>
+                                <CloudOff size={14} style={{ color: '#9ca3af' }} />
+                                <span>DNS only</span>
                               </>
                             )}
                           </button>
                         ) : (
-                          <span style={{ fontSize: '11px', color: '#555555' }}>DNS Only</span>
+                          <span style={{ color: '#6b7280', fontSize: '12px' }}>DNS only</span>
                         )}
                       </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
+                      {/* TTL */}
+                      <td style={{ padding: '12px 14px', color: '#9ca3af' }}>
+                        {rec.ttl === 300 || rec.ttl === 1 ? 'Auto' : `${rec.ttl}s`}
+                      </td>
+
+                      {/* Tags */}
+                      <td style={{ padding: '12px 14px', color: '#6b7280' }}>
+                        -
+                      </td>
+
+                      {/* Comment */}
+                      <td style={{ padding: '12px 14px', color: '#9ca3af' }}>
+                        {rec.tag || '-'}
+                      </td>
+
+                      {/* Details / Action */}
+                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                           <button
-                            onClick={() => handleOpenEditModal(rec)}
-                            title="Düzenle"
+                            onClick={() => handleOpenEditForm(rec)}
+                            title="Edit"
                             style={{
-                              background: 'transparent',
+                              background: 'none',
                               border: 'none',
-                              color: '#888888',
+                              color: '#9ca3af',
                               cursor: 'pointer',
-                              padding: '4px',
+                              padding: '2px',
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = '#888888')}
                           >
-                            <Edit3 size={15} />
+                            <Edit3 size={13} />
                           </button>
-
                           <button
                             onClick={() => handleDeleteRecord(rec.id, rec.name)}
-                            title="Sil"
+                            title="Delete"
                             style={{
-                              background: 'transparent',
+                              background: 'none',
                               border: 'none',
                               color: '#ef4444',
                               cursor: 'pointer',
-                              padding: '4px',
+                              padding: '2px',
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = '#f87171')}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = '#ef4444')}
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
@@ -691,251 +1126,8 @@ export default function DnsTableManager({
             </tbody>
           </table>
         </div>
-
-        {/* Table Footer */}
-        <div style={{ padding: '12px 18px', background: '#050505', borderTop: '1px solid #1a1a1a', fontSize: '12px', color: '#666' }}>
-          <span>Toplam <strong>{records.length}</strong> DNS kaydı listeleniyor</span>
-        </div>
       </div>
 
-      {/* 4. ADD / EDIT RECORD MODAL */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.88)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '16px',
-        }}>
-          <div 
-            className="card animate-slide-down"
-            style={{
-              width: '100%',
-              maxWidth: '560px',
-              background: '#0a0a0a',
-              border: '1px solid #222222',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8)',
-              borderRadius: '12px',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '18px 22px',
-              borderBottom: '1px solid #1a1a1a',
-            }}>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#ffffff' }}>
-                {editingRecordId ? 'DNS Kaydını Düzenle' : 'Yeni DNS Kaydı Ekle'}
-              </div>
-              <button onClick={() => setIsModalOpen(false)} style={{ color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleSaveRecord} style={{ padding: '22px' }}>
-              {/* Type Select */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
-                  Kayıt Türü (Record Type):
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {RECORD_TYPES.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setRecordType(t)}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: recordType === t ? '#ffffff' : '#141414',
-                        color: recordType === t ? '#000000' : '#888888',
-                        border: `1px solid ${recordType === t ? '#ffffff' : '#222222'}`,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Name & Content Inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
-                    Ad (Name):
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={recordName}
-                    onChange={(e) => setRecordName(e.target.value)}
-                    placeholder="@ veya www"
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      background: '#000000',
-                      border: '1px solid #222222',
-                      borderRadius: 'var(--radius-sm)',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                    }}
-                  />
-                  <span style={{ fontSize: '10px', color: '#666', marginTop: '4px', display: 'block' }}>
-                    Kök için <strong>@</strong> yazın
-                  </span>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
-                    İçerik (IPv4 / Hedef / Değer):
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={recordContent}
-                    onChange={(e) => setRecordContent(e.target.value)}
-                    placeholder={
-                      recordType === 'A'
-                        ? '191.44.68.250'
-                        : recordType === 'CNAME'
-                        ? 'cname.vercel-dns.com'
-                        : recordType === 'TXT'
-                        ? 'v=spf1 include:_spf.google.com ~all'
-                        : 'Hedef değer'
-                    }
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      background: '#000000',
-                      border: '1px solid #222222',
-                      borderRadius: 'var(--radius-sm)',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Priority for MX / SRV */}
-              {['MX', 'SRV'].includes(recordType) && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
-                    Öncelik (Priority):
-                  </label>
-                  <input
-                    type="number"
-                    value={recordPriority}
-                    onChange={(e) => setRecordPriority(Number(e.target.value))}
-                    min={0}
-                    max={65535}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      background: '#000000',
-                      border: '1px solid #222222',
-                      borderRadius: 'var(--radius-sm)',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Port & Weight for SRV */}
-              {recordType === 'SRV' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>Port:</label>
-                    <input
-                      type="number"
-                      value={recordPort}
-                      onChange={(e) => setRecordPort(Number(e.target.value))}
-                      style={{ width: '100%', padding: '9px 12px', background: '#000', border: '1px solid #222', borderRadius: '4px', color: '#fff', fontSize: '13px' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>Ağırlık (Weight):</label>
-                    <input
-                      type="number"
-                      value={recordWeight}
-                      onChange={(e) => setRecordWeight(Number(e.target.value))}
-                      style={{ width: '100%', padding: '9px 12px', background: '#000', border: '1px solid #222', borderRadius: '4px', color: '#fff', fontSize: '13px' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TTL and Proxy Options */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>TTL:</label>
-                  <select
-                    value={recordTtl}
-                    onChange={(e) => setRecordTtl(Number(e.target.value))}
-                    style={{
-                      width: '100%',
-                      padding: '9px 12px',
-                      background: '#000000',
-                      border: '1px solid #222222',
-                      borderRadius: 'var(--radius-sm)',
-                      color: '#ffffff',
-                      fontSize: '13px',
-                    }}
-                  >
-                    <option value={300}>Otomatik (300 saniye)</option>
-                    <option value={60}>1 dakika</option>
-                    <option value={120}>2 dakika</option>
-                    <option value={600}>10 dakika</option>
-                    <option value={3600}>1 saat</option>
-                    <option value={86400}>1 gün</option>
-                  </select>
-                </div>
-
-                {['A', 'AAAA', 'CNAME'].includes(recordType) && (
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a3a3a3', marginBottom: '6px' }}>
-                      Cloudflare Proxy:
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#fff', fontSize: '12px' }}>
-                      <input
-                        type="checkbox"
-                        checked={recordProxied}
-                        onChange={(e) => setRecordProxied(e.target.checked)}
-                        style={{ accentColor: '#ea580c', width: '16px', height: '16px' }}
-                      />
-                      <span>WAF & DDoS Koruma (Proxied)</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Modal Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary btn-sm">
-                  İptal
-                </button>
-                <button type="submit" className="btn-primary btn-sm">
-                  {editingRecordId ? 'Değişiklikleri Kaydet' : 'Kaydet & Yayınla'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
