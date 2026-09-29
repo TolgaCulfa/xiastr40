@@ -1,6 +1,6 @@
 export type DomainZone = 'xias.tr' | 'xias.info';
 
-export type DnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX';
+export type DnsRecordType = 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX' | 'SRV' | 'CAA' | 'NS' | 'PTR';
 
 export interface DnsRecord {
   id: string;
@@ -10,7 +10,11 @@ export interface DnsRecord {
   content: string; // IP or target hostname
   ttl: number; // 60, 300, 3600 or 1 for auto
   proxied: boolean; // Cloudflare Orange Cloud (CDN/DDoS) vs Grey Cloud (DNS only)
-  priority?: number; // for MX
+  priority?: number; // for MX & SRV
+  weight?: number; // for SRV
+  port?: number; // for SRV
+  tag?: string; // for CAA (issue, issuewild, iodef)
+  flags?: number; // for CAA (0 or 128)
   createdAt: string;
   updatedAt: string;
 }
@@ -74,7 +78,9 @@ export interface ClaimedSubdomain {
   sslCert?: SslCertificate;
   analytics?: DomainAnalytics;
   isCustomDomain?: boolean;
+  nameserverStatus?: 'pending' | 'active';
   assignedNameservers?: string[];
+  lastNsCheckAt?: string;
 }
 
 export interface CloudflareConfig {

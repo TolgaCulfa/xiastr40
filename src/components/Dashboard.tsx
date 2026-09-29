@@ -11,10 +11,12 @@ import {
   DomainZone,
 } from '@/lib/types';
 import DnsRecordManager from './DnsRecordManager';
+import DnsTableManager from './DnsTableManager';
 import UrlRedirectManager from './UrlRedirectManager';
 import SetupGuides from './SetupGuides';
 import SubdomainSearch from './SubdomainSearch';
 import ClaimModal from './ClaimModal';
+import AddDomainModal from './AddDomainModal';
 import SslManager from './SslManager';
 import MaintenanceManager from './MaintenanceManager';
 import AnalyticsWidget from './AnalyticsWidget';
@@ -70,6 +72,8 @@ interface DashboardProps {
   onToggleDdosShield?: (subdomainId: string) => void;
   onUpdateMaintenance?: (subdomainId: string, config: MaintenanceConfig) => void;
   onUpdateSsl?: (subdomainId: string, sslCert: SslCertificate) => void;
+  onAddSubdomain?: (newSubdomain: ClaimedSubdomain) => void;
+  onUpdateSubdomain?: (updated: ClaimedSubdomain) => void;
   onNavigateToSearch: () => void;
 }
 
@@ -97,6 +101,8 @@ export default function Dashboard({
   onToggleDdosShield,
   onUpdateMaintenance,
   onUpdateSsl,
+  onAddSubdomain,
+  onUpdateSubdomain,
   onNavigateToSearch,
 }: DashboardProps) {
   const [currentTab, setCurrentTab] = useState<SidebarTab>('home');
@@ -104,6 +110,13 @@ export default function Dashboard({
   const [isCopiedDomain, setIsCopiedDomain] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [userEmail, setUserEmail] = useState('Tolgax058@gmail.com');
+  const [isAddDomainModalOpen, setIsAddDomainModalOpen] = useState(false);
+  const [dashboardToast, setDashboardToast] = useState<string | null>(null);
+
+  const showDashboardToast = (msg: string) => {
+    setDashboardToast(msg);
+    setTimeout(() => setDashboardToast(null), 3500);
+  };
 
   // Claim modal for embedded Subdomain Search tab
   const [claimTarget, setClaimTarget] = useState<{ subdomain: string; zone: DomainZone } | null>(null);
@@ -270,6 +283,28 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
             <span>{userEmail}</span>
             <ChevronDown size={13} style={{ color: '#888888' }} />
           </div>
+
+          {/* Add Domain Button */}
+          <button
+            onClick={() => setIsAddDomainModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 12px',
+              borderRadius: '4px',
+              backgroundColor: '#ffffff',
+              color: '#000000',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'opacity 0.15s ease',
+            }}
+          >
+            <Plus size={13} />
+            <span>Domain Ekle</span>
+          </button>
         </div>
 
         {/* Right Actions */}
@@ -861,8 +896,8 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                   </p>
                 </div>
 
-                <button onClick={() => setCurrentTab('subdomain-al')} className="btn-secondary btn-sm">
-                  <span>Rehberi İncele</span>
+                <button onClick={() => setIsAddDomainModalOpen(true)} className="btn-secondary btn-sm">
+                  <span>Domain Ekle / NS Bağla</span>
                 </button>
               </div>
 
@@ -881,11 +916,11 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                     Kayıtlı Domainler & DNS Yönetimi
                   </h1>
                   <p style={{ fontSize: '13px', color: '#888888', marginTop: '2px' }}>
-                    A, AAAA, CNAME kayıtları, URL yönlendirme ve yayılım kontrolleri
+                    A, AAAA, CNAME, TXT, MX kayıtları, Nameserver kontrolleri ve Anycast WAF
                   </p>
                 </div>
 
-                <button onClick={() => setCurrentTab('subdomain-al')} className="btn-primary">
+                <button onClick={() => setIsAddDomainModalOpen(true)} className="btn-primary">
                   <Plus size={14} />
                   <span>Yeni Domain Ekle</span>
                 </button>
@@ -900,7 +935,7 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                   <p style={{ fontSize: '13px', color: '#777777', maxWidth: '440px', margin: '0 auto 20px auto' }}>
                     xias.tr veya xias.info uzantılı ücretsiz subdomaininizi oluşturun ya da kendi domaininizi bağlayın.
                   </p>
-                  <button onClick={() => setCurrentTab('subdomain-al')} className="btn-primary">
+                  <button onClick={() => setIsAddDomainModalOpen(true)} className="btn-primary">
                     <Plus size={15} />
                     <span>İlk Domaini Kaydet</span>
                   </button>
@@ -928,11 +963,18 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                               cursor: 'pointer',
                             }}
                           >
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-                              {sub.fullDomain}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {sub.fullDomain}
+                              </span>
+                              {sub.isCustomDomain && sub.nameserverStatus === 'pending' && (
+                                <span style={{ fontSize: '10px', color: '#facc15', background: '#241a05', padding: '1px 5px', borderRadius: '4px', border: '1px solid #713f12', flexShrink: 0 }}>
+                                  🟡 Bekliyor
+                                </span>
+                              )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: '#777777' }}>
-                              <span>{sub.dnsRecords.length}/6 Kayıt</span>
+                              <span>{sub.dnsRecords.length} Kayıt</span>
                               {sub.ddosShieldEnabled && (
                                 <span style={{ color: '#ffffff', background: '#222', padding: '1px 4px', borderRadius: '2px', fontSize: '10px' }}>
                                   DDoS
@@ -1077,11 +1119,14 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
                       </div>
 
                       {activeSubTab === 'dns' && (
-                        <DnsRecordManager
+                        <DnsTableManager
                           subdomain={activeSub}
-                          onAddRecord={onAddDnsRecord}
-                          onDeleteRecord={onDeleteDnsRecord}
-                          onToggleProxy={onToggleProxy}
+                          onUpdateSubdomain={(updated) => {
+                            if (onUpdateSubdomain) {
+                              onUpdateSubdomain(updated);
+                            }
+                          }}
+                          showToast={(msg) => showDashboardToast(msg)}
                         />
                       )}
 
@@ -1400,6 +1445,48 @@ Dijital Doğrulama İmzası: XIAS_SHA256_VERIFIED_SIGNATURE
             setCurrentTab('domains');
           }}
         />
+      )}
+
+      {/* Add Domain Modal (Dual: Free Subdomain vs Custom Domain Nameserver) */}
+      {isAddDomainModalOpen && (
+        <AddDomainModal
+          onClose={() => setIsAddDomainModalOpen(false)}
+          onSuccess={(newDomain) => {
+            setIsAddDomainModalOpen(false);
+            if (onAddSubdomain) {
+              onAddSubdomain(newDomain);
+            }
+            onSelectSubdomain(newDomain);
+            setCurrentTab('domains');
+            showDashboardToast(`"${newDomain.fullDomain}" başarıyla eklendi!`);
+          }}
+        />
+      )}
+
+      {/* Internal Dashboard Toast Notification */}
+      {dashboardToast && (
+        <div
+          className="animate-slide-down"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 1000,
+            background: '#111111',
+            border: '1px solid #333333',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.7)',
+            padding: '12px 18px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '13px',
+            color: '#ffffff',
+          }}
+        >
+          <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
+          <span>{dashboardToast}</span>
+        </div>
       )}
     </div>
   );

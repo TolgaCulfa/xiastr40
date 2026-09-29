@@ -201,6 +201,21 @@ function DashboardContent() {
     showToast(`"${updatedCurrent?.fullDomain}" için 256-Bit SSL Sertifikası Başarıyla Tanımlandı!`);
   };
 
+  const handleAddSubdomain = (newSub: ClaimedSubdomain) => {
+    const updated = [newSub, ...subdomains];
+    setSubdomains(updated);
+    saveStoredSubdomains(updated);
+    setSelectedSubdomain(newSub);
+    showToast(`"${newSub.fullDomain}" sisteme eklendi ve DNS yapılandırmasına hazır!`);
+  };
+
+  const handleUpdateSubdomain = (updatedSub: ClaimedSubdomain) => {
+    const updated = subdomains.map((s) => (s.id === updatedSub.id ? updatedSub : s));
+    setSubdomains(updated);
+    saveStoredSubdomains(updated);
+    setSelectedSubdomain(updatedSub);
+  };
+
   return (
     <>
       {toastMessage && (
@@ -240,6 +255,8 @@ function DashboardContent() {
         onToggleDdosShield={handleToggleDdosShield}
         onUpdateMaintenance={handleUpdateMaintenance}
         onUpdateSsl={handleUpdateSsl}
+        onAddSubdomain={handleAddSubdomain}
+        onUpdateSubdomain={handleUpdateSubdomain}
         onNavigateToSearch={() => router.push('/subdomain-al')}
       />
     </>
