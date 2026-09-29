@@ -1,12 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ClaimedSubdomain } from '@/lib/types';
-import { BarChart3, TrendingUp, ShieldAlert, Users, Activity, Globe, ArrowUpRight } from 'lucide-react';
+import { BarChart3, TrendingUp, ShieldAlert, Users, Activity, Globe, ArrowUpRight, RefreshCw } from 'lucide-react';
 
 interface AnalyticsWidgetProps {
   subdomains: ClaimedSubdomain[];
   activeSubdomain?: ClaimedSubdomain | null;
+}
+
+interface AnalyticsData {
+  totalRequests: number;
+  uniqueVisitors: number;
+  threatsMitigated: number;
+  bandwidth: string;
+  timeline: { label: string; requests: number }[];
 }
 
 export default function AnalyticsWidget({
@@ -15,27 +23,60 @@ export default function AnalyticsWidget({
 }: AnalyticsWidgetProps) {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [hoveredPoint, setHoveredPoint] = useState<{ index: number; label: string; req: number } | null>(null);
+  const [data, setData] = useState<AnalyticsData>({
+    totalRequests: 0,
+    uniqueVisitors: 0,
+    threatsMitigated: 0,
+    bandwidth: '0 MB',
+    timeline: [
+      { label: '00:00', requests: 0 },
+      { label: '02:00', requests: 0 },
+      { label: '04:00', requests: 0 },
+      { label: '06:00', requests: 0 },
+      { label: '08:00', requests: 0 },
+      { label: '10:00', requests: 0 },
+      { label: '12:00', requests: 0 },
+      { label: '14:00', requests: 0 },
+      { label: '16:00', requests: 0 },
+      { label: '18:00', requests: 0 },
+      { label: '20:00', requests: 0 },
+      { label: '22:00', requests: 0 }
+    ],
+  });
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Generate realistic data based on subdomains count and DDoS status
-  const multiplier = Math.max(1, subdomains.length);
-  const totalReq = timeRange === '24h' ? 14280 * multiplier : timeRange === '7d' ? 98400 * multiplier : 412000 * multiplier;
-  const uniqueVis = timeRange === '24h' ? 3840 * multiplier : timeRange === '7d' ? 24500 * multiplier : 98000 * multiplier;
-  const threats = timeRange === '24h' ? 840 * multiplier : timeRange === '7d' ? 5200 * multiplier : 21000 * multiplier;
-  const bandwidth = timeRange === '24h' ? `${(1.8 * multiplier).toFixed(1)} GB` : timeRange === '7d' ? `${(12.4 * multiplier).toFixed(1)} GB` : `${(54.2 * multiplier).toFixed(1)} GB`;
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const domainParam = activeSubdomain ? encodeURIComponent(activeSubdomain.fullDomain) : '';
+      const res = await fetch(`/api/analytics?domain=${domainParam}&timeRange=${timeRange}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setData(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to load real analytics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // 12 data points for the SVG line chart
-  const hours = ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'];
-  const dataPoints = [32, 18, 14, 28, 65, 84, 92, 110, 105, 120, 95, 78];
+  useEffect(() => {
+    fetchAnalytics();
+    const interval = setInterval(fetchAnalytics, 15000); // 15s auto-refresh
+    return () => clearInterval(interval);
+  }, [timeRange, activeSubdomain?.fullDomain]);
 
-  // SVG dimensions
+  // SVG Chart Calculation
   const svgWidth = 600;
   const svgHeight = 160;
-  const maxVal = Math.max(...dataPoints);
+  const dataPoints = data.timeline.map(t => t.requests);
+  const maxVal = Math.max(...dataPoints, 1);
 
-  const pointsString = dataPoints
-    .map((val, idx) => {
-      const x = (idx / (dataPoints.length - 1)) * (svgWidth - 40) + 20;
-      const y = svgHeight - 25 - (val / maxVal) * (svgHeight - 50);
+  const pointsString = data.timeline
+    .map((item, idx) => {
+      const x = (idx / Math.max(1, data.timeline.length - 1)) * (svgWidth - 40) + 20;
+      const y = svgHeight - 25 - (item.requests / maxVal) * (svgHeight - 50);
       return `${x},${y}`;
     })
     .join(' ');
@@ -45,65 +86,92 @@ export default function AnalyticsWidget({
       {/* Header with Title & Filter */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
-            Site Ziyaretçileri & Trafik Analitiği
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
+              Site Ziyaretçileri & Gerçek Trafik Analitiği
+            </h2>
+            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: '#1c1c1c', color: '#22c55e', border: '1px solid #333' }}>
+              ● Canlı PostgreSQL & PowerDNS
+            </span>
+          </div>
           <p style={{ fontSize: '13px', color: '#888888', marginTop: '2px' }}>
-            Cloudflare Anycast PoP düğümleri üzerinden geçen gerçek zamanlı trafik akışı
+            {activeSubdomain ? `"${activeSubdomain.fullDomain}" için gerçek zamanlı veritabanı kayıtları` : 'Tüm domainleriniz için gerçek zamanlı ziyaretçi ve tehdit akışı'}
           </p>
         </div>
 
-        {/* Time Filter Dropdown (like Cloudflare) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0a0a0a', border: '1px solid #222222', borderRadius: 'var(--radius-sm)', padding: '4px' }}>
+        {/* Filter Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
-            onClick={() => setTimeRange('24h')}
+            onClick={() => fetchAnalytics()}
+            title="Yenile"
             style={{
-              padding: '5px 12px',
+              padding: '6px 10px',
               borderRadius: 'var(--radius-sm)',
-              fontSize: '12px',
-              fontWeight: 600,
-              backgroundColor: timeRange === '24h' ? '#ffffff' : 'transparent',
-              color: timeRange === '24h' ? '#000000' : '#888888',
-              border: 'none',
+              background: '#0a0a0a',
+              border: '1px solid #222',
+              color: '#888',
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '12px',
             }}
           >
-            Son 24 Saat
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span>Yenile</span>
           </button>
-          <button
-            onClick={() => setTimeRange('7d')}
-            style={{
-              padding: '5px 12px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '12px',
-              fontWeight: 600,
-              backgroundColor: timeRange === '7d' ? '#ffffff' : 'transparent',
-              color: timeRange === '7d' ? '#000000' : '#888888',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Son 7 Gün
-          </button>
-          <button
-            onClick={() => setTimeRange('30d')}
-            style={{
-              padding: '5px 12px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '12px',
-              fontWeight: 600,
-              backgroundColor: timeRange === '30d' ? '#ffffff' : 'transparent',
-              color: timeRange === '30d' ? '#000000' : '#888888',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Son 30 Gün
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#0a0a0a', border: '1px solid #222222', borderRadius: 'var(--radius-sm)', padding: '4px' }}>
+            <button
+              onClick={() => setTimeRange('24h')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: timeRange === '24h' ? '#ffffff' : 'transparent',
+                color: timeRange === '24h' ? '#000000' : '#888888',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Son 24 Saat
+            </button>
+            <button
+              onClick={() => setTimeRange('7d')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: timeRange === '7d' ? '#ffffff' : 'transparent',
+                color: timeRange === '7d' ? '#000000' : '#888888',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Son 7 Gün
+            </button>
+            <button
+              onClick={() => setTimeRange('30d')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: timeRange === '30d' ? '#ffffff' : 'transparent',
+                color: timeRange === '30d' ? '#000000' : '#888888',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Son 30 Gün
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 4 Metric Cards */}
+      {/* 4 Metric Cards - PURE REAL DATABASE VALUES */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
         {/* Card 1 */}
         <div className="card" style={{ padding: '18px', backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
@@ -112,11 +180,17 @@ export default function AnalyticsWidget({
             <Activity size={15} style={{ color: '#ffffff' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', marginTop: '6px' }}>
-            {totalReq.toLocaleString('tr-TR')}
+            {data.totalRequests.toLocaleString('tr-TR')}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#22c55e', marginTop: '4px' }}>
-            <ArrowUpRight size={13} />
-            <span>%14.2 artış (önceki döneme göre)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: data.totalRequests > 0 ? '#22c55e' : '#666666', marginTop: '4px' }}>
+            {data.totalRequests > 0 ? (
+              <>
+                <ArrowUpRight size={13} />
+                <span>Gerçek zamanlı trafik aktif</span>
+              </>
+            ) : (
+              <span>Henüz gelen istek yok</span>
+            )}
           </div>
         </div>
 
@@ -127,10 +201,10 @@ export default function AnalyticsWidget({
             <Users size={15} style={{ color: '#ffffff' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', marginTop: '6px' }}>
-            {uniqueVis.toLocaleString('tr-TR')}
+            {data.uniqueVisitors.toLocaleString('tr-TR')}
           </div>
           <div style={{ fontSize: '11px', color: '#777777', marginTop: '4px' }}>
-            Dünya genelinde 42 farklı ülkeden
+            {data.uniqueVisitors > 0 ? 'Farklı IP adresleri süzüldü' : 'Tekil ziyaretçi bekleniyor'}
           </div>
         </div>
 
@@ -141,42 +215,38 @@ export default function AnalyticsWidget({
             <ShieldAlert size={15} style={{ color: '#ffffff' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', marginTop: '6px' }}>
-            {threats.toLocaleString('tr-TR')}
+            {data.threatsMitigated.toLocaleString('tr-TR')}
           </div>
           <div style={{ fontSize: '11px', color: '#888888', marginTop: '4px' }}>
-            Turnstile & L7 WAF ile süzüldü
+            {data.threatsMitigated > 0 ? 'Turnstile WAF ile durduruldu' : 'Tehdit algılanmadı (Güvende)'}
           </div>
         </div>
 
         {/* Card 4 */}
         <div className="card" style={{ padding: '18px', backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#888888', fontSize: '11px', textTransform: 'uppercase', fontWeight: 600 }}>
-            <span>Bant Genişliği & Önbellek</span>
+            <span>Bant Genişliği & Veri</span>
             <Globe size={15} style={{ color: '#ffffff' }} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', marginTop: '6px' }}>
-            {bandwidth}
+            {data.bandwidth}
           </div>
           <div style={{ fontSize: '11px', color: '#777777', marginTop: '4px' }}>
-            %88 Edge Cache Hit Oranı
+            Sunucu üzerinden aktarılan gerçek veri
           </div>
         </div>
       </div>
 
-      {/* Cloudflare Style Traffic Line Graph */}
+      {/* Traffic Line Graph */}
       <div className="card" style={{ padding: '24px', backgroundColor: '#0a0a0a', border: '1px solid #1a1a1a' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-            İstek Grafiği (Requests over time)
+            İstek Grafiği (Zaman İçindeki Trafik)
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11px', color: '#888888' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ffffff' }} />
-              <span>Normal Trafik</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#555555' }} />
-              <span>DDoS Savunması</span>
+              <span>Gerçek İstekler</span>
             </div>
           </div>
         </div>
@@ -184,39 +254,40 @@ export default function AnalyticsWidget({
         {/* Responsive SVG Chart */}
         <div style={{ width: '100%', overflowX: 'auto' }}>
           <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ width: '100%', height: '180px' }}>
-            {/* Horizontal Grid lines */}
+            {/* Grid lines */}
             <line x1="20" y1="20" x2={svgWidth - 20} y2="20" stroke="#1c1c1c" strokeDasharray="4 4" />
             <line x1="20" y1="65" x2={svgWidth - 20} y2="65" stroke="#1c1c1c" strokeDasharray="4 4" />
             <line x1="20" y1="110" x2={svgWidth - 20} y2="110" stroke="#1c1c1c" strokeDasharray="4 4" />
             <line x1="20" y1={svgHeight - 25} x2={svgWidth - 20} y2={svgHeight - 25} stroke="#262626" />
 
-            {/* Gradient Area fill */}
             <defs>
-              <linearGradient id="cfTrafficGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+              <linearGradient id="cfTrafficGradReal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
                 <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
-            <polygon
-              points={`20,${svgHeight - 25} ${pointsString} ${svgWidth - 20},${svgHeight - 25}`}
-              fill="url(#cfTrafficGrad)"
-            />
+            {dataPoints.some(v => v > 0) && (
+              <>
+                <polygon
+                  points={`20,${svgHeight - 25} ${pointsString} ${svgWidth - 20},${svgHeight - 25}`}
+                  fill="url(#cfTrafficGradReal)"
+                />
+                <polyline
+                  points={pointsString}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </>
+            )}
 
-            {/* The main stroke line */}
-            <polyline
-              points={pointsString}
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            {/* Data point dots with hover */}
-            {dataPoints.map((val, idx) => {
-              const x = (idx / (dataPoints.length - 1)) * (svgWidth - 40) + 20;
-              const y = svgHeight - 25 - (val / maxVal) * (svgHeight - 50);
+            {/* Data point dots */}
+            {data.timeline.map((item, idx) => {
+              const x = (idx / Math.max(1, data.timeline.length - 1)) * (svgWidth - 40) + 20;
+              const y = svgHeight - 25 - (item.requests / maxVal) * (svgHeight - 50);
               const isHovered = hoveredPoint?.index === idx;
 
               return (
@@ -224,17 +295,16 @@ export default function AnalyticsWidget({
                   <circle
                     cx={x}
                     cy={y}
-                    r={isHovered ? 5 : 3.5}
-                    fill={isHovered ? '#ffffff' : '#000000'}
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
+                    r={isHovered ? 5 : item.requests > 0 ? 3.5 : 2}
+                    fill={isHovered ? '#ffffff' : item.requests > 0 ? '#ffffff' : '#333333'}
+                    stroke={item.requests > 0 ? '#ffffff' : '#444444'}
+                    strokeWidth="1.5"
+                    style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
                     onMouseEnter={() =>
-                      setHoveredPoint({ index: idx, label: hours[idx], req: Math.round(val * 14 * multiplier) })
+                      setHoveredPoint({ index: idx, label: item.label, req: item.requests })
                     }
                     onMouseLeave={() => setHoveredPoint(null)}
                   />
-                  {/* Axis Hour Labels */}
                   <text
                     x={x}
                     y={svgHeight - 8}
@@ -243,7 +313,7 @@ export default function AnalyticsWidget({
                     fontSize="9"
                     fontFamily="monospace"
                   >
-                    {hours[idx]}
+                    {item.label}
                   </text>
                 </g>
               );
@@ -269,7 +339,13 @@ export default function AnalyticsWidget({
           >
             <span>Saat: <strong>{hoveredPoint.label}</strong></span>
             <span>&bull;</span>
-            <span>İstek: <strong>{hoveredPoint.req.toLocaleString('tr-TR')} req/s</strong></span>
+            <span>İstek Sayısı: <strong>{hoveredPoint.req.toLocaleString('tr-TR')}</strong></span>
+          </div>
+        )}
+
+        {!dataPoints.some(v => v > 0) && (
+          <div style={{ textAlign: 'center', color: '#666', fontSize: '12px', marginTop: '12px' }}>
+            Henüz kayıtlı trafik bulunmuyor. Domaininize istek geldikçe grafik burada gerçek zamanlı çizilecektir.
           </div>
         )}
       </div>

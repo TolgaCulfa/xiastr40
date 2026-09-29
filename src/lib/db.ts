@@ -9,9 +9,13 @@ export function getDbPool(): Pool | null {
   }
 
   if (!pool) {
+    const useSsl = connectionString.includes('sslmode=require');
     pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
     });
   }
   return pool;
