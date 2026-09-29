@@ -31,32 +31,68 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST create a new DNS record
+// POST create a new DNS record (Saves to PowerDNS + Cloudflare)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { domain, name, type, content, ttl = 300, priority = 10 } = body;
+    const { domain, name, type, content, ttl = 300, priority = 10, proxied = true } = body;
 
     if (!domain || !name || !type || !content) {
       return NextResponse.json({ success: false, message: 'Eksik kayıt parametreleri' }, { status: 400 });
     }
 
-    // Ensure domain exists in domains table
+    const cleanDomain = domain.toLowerCase().trim();
+    const fullName = name === '@' ? cleanDomain : name.endsWith(cleanDomain) ? name : `${name}.${cleanDomain}`;
+
+    // 1. Sync to Cloudflare if domain belongs to xias.tr or xias.info
+    let cloudflareId = null;
+    const token = process.env.CLOUDFLARE_API_TOKEN;
+    const zoneId = cleanDomain.endsWith('xias.tr') 
+      ? process.env.CLOUDFLARE_ZONE_ID_XIASTR 
+      : cleanDomain.endsWith('xias.info')
+      ? process.env.CLOUDFLARE_ZONE_ID_XIASINFO
+      : null;
+
+    if (token && zoneId) {
+      try {
+        const cfRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type,
+            name: fullName,
+            content: content.trim(),
+            ttl: ttl === 300 || ttl === 1 ? 1 : ttl,
+            proxied: ['A', 'AAAA', 'CNAME'].includes(type) ? proxied : false,
+            priority: ['MX', 'SRV'].includes(type) ? priority : undefined,
+            comment: 'Managed via XiasTr Dashboard',
+          }),
+        });
+        const cfData = await cfRes.json();
+        if (cfData.success && cfData.result?.id) {
+          cloudflareId = cfData.result.id;
+        }
+      } catch (cfErr) {
+        console.error('Cloudflare sync error:', cfErr);
+      }
+    }
+
+    // 2. Ensure domain exists in domains table in PostgreSQL
     await query(`
       INSERT INTO domains (name, type) 
       VALUES ($1, 'NATIVE') 
       ON CONFLICT DO NOTHING
-    `, [domain]);
+    `, [cleanDomain]);
 
-    const domainRes = await query(`SELECT id FROM domains WHERE name = $1`, [domain]);
+    const domainRes = await query(`SELECT id FROM domains WHERE name = $1`, [cleanDomain]);
     const domainId = domainRes?.rows[0]?.id;
 
     if (!domainId) {
       return NextResponse.json({ success: false, message: 'Domain bölgesi bulunamadı' }, { status: 500 });
     }
-
-    // Format full record name
-    const fullName = name === '@' ? domain : name.endsWith(domain) ? name : `${name}.${domain}`;
 
     const insertRes = await query(`
       INSERT INTO records (domain_id, name, type, content, ttl, prio)
@@ -66,7 +102,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      record: insertRes?.rows[0]
+      record: insertRes?.rows[0],
+      cloudflareId,
     });
   } catch (error: any) {
     console.error('Error inserting DNS record into PostgreSQL:', error);

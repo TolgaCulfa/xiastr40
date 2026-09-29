@@ -23,15 +23,37 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     const subId = `sub-${Date.now()}`;
     const now = new Date().toISOString();
+    const targetIpOrDomain = setupType === 'cname' 
+      ? (targetValue.trim() || 'cname.vercel-dns.com')
+      : (targetValue.trim() || '191.44.68.250');
 
     let records: DnsRecord[] = [];
     let redirectConfig: UrlRedirect | undefined = undefined;
+
+    // Call Real Cloudflare and PowerDNS API
+    try {
+      const res = await fetch('/api/subdomain/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subdomain,
+          domainZone,
+          type: setupType === 'cname' ? 'CNAME' : 'A',
+          content: targetIpOrDomain,
+          proxied: setupType === 'redirect' ? true : isProxied,
+        }),
+      });
+      const data = await res.json();
+      console.log('Real Subdomain Claim Result:', data);
+    } catch (apiErr) {
+      console.error('Subdomain claim API error:', apiErr);
+    }
 
     if (setupType === 'redirect') {
       records.push({
@@ -61,20 +83,19 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
         subdomainId: subId,
         type: 'CNAME',
         name: '@',
-        content: targetValue.trim() || 'cname.vercel-dns.com',
+        content: targetIpOrDomain,
         ttl: 1,
         proxied: isProxied,
         createdAt: now,
         updatedAt: now,
       });
     } else {
-      // A record
       records.push({
         id: `rec-${Date.now()}-1`,
         subdomainId: subId,
         type: 'A',
         name: '@',
-        content: targetValue.trim() || '185.199.108.153',
+        content: targetIpOrDomain,
         ttl: 1,
         proxied: isProxied,
         createdAt: now,
@@ -97,9 +118,7 @@ export default function ClaimModal({ subdomain, domainZone, onClose, onSuccess }
       redirect: redirectConfig,
     };
 
-    setTimeout(() => {
-      onSuccess(newSubdomain);
-    }, 250);
+    onSuccess(newSubdomain);
   };
 
   return (
